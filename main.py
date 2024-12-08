@@ -4,3 +4,4 @@ print('hello dima')
 
 print('de zakhar?')
 
+print('nema')
