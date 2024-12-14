@@ -26,7 +26,7 @@ def verify_password(plait_password, hashed_password):
 
 # BASE_DIR = Path(__file__).resolve().parent
 # HTML_FILE_PATH = BASE_DIR / "main.html"
-
+# render main page
 @app.get("/", response_class=HTMLResponse)
 async def read_html():
     # Open and read the HTML file asynchronously
