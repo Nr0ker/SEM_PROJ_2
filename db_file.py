@@ -39,3 +39,4 @@ def init_product_db():
             photo LONGBLOB
         )
     ''')
+
