@@ -1,10 +1,4 @@
-print('hello world')
+from fastapi import FastAPI
 
-print('hello dima')
+app = FastAPI()
 
-print('de zakhar?')
-
-print('nema')
-
-
-print('yasno')
