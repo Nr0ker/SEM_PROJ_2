@@ -1,13 +1,8 @@
 import sqlite3
 
-
+# user db
 def get_user_db():
     conn = sqlite3.connect('users.db')
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def get_product_db():
-    conn = sqlite3.connect('products.db')
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -19,10 +14,17 @@ def init_user_db():
             id INTEGER PRIMARY KEY,
             username TEXT NOT NULL,
             email TEXT NOT NULL,
-            password TEXT NOT NULL,
+            hashed_password TEXT NOT NULL,
             is_admin BOOLEAN NOT NULL DEFAULT 0
         )
     ''')
+
+
+# product db
+def get_product_db():
+    conn = sqlite3.connect('products.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def init_product_db():
