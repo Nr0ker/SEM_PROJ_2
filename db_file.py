@@ -2,13 +2,11 @@ import sqlite3
 
 
 def get_user_db():
-    pass
     conn = sqlite3.connect('users.db')
     conn.row_factory = sqlite3.Row
     return conn
 
 def get_product_db():
-    pass
     conn = sqlite3.connect('products.db')
     conn.row_factory = sqlite3.Row
     return conn
