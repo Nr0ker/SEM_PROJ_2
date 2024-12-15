@@ -11,7 +11,7 @@ class User(BaseModel):
 
     @field_validator('username', mode='before')
     @classmethod
-    def username_validation(cls, value:str) -> str:
+    def username_validation(cls, value: str) -> str:
         if len(value) < 2:
             raise ValueError('Name should be more than 2 letters')
         if not (value[0].isupper() and value[1:].islower()):
@@ -20,7 +20,7 @@ class User(BaseModel):
 
     @field_validator('password', mode='before')
     @classmethod
-    def validate_password(value: str) -> str:
+    def validate_password(cls, value: str) -> str:
         if not re.fullmatch(r'(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{6,}', value):
             raise ValueError(
                 'Password must be at least 6 characters long, contain small and big letters, numbers, and special symbols')
