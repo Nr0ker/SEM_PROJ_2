@@ -10,10 +10,16 @@ from typing import Optional
 import re
 from models import User
 import uvicorn
-from db_file import get_user_db, get_product_db
+from db_file import init_product_db, init_user_db, get_product_db, get_user_db
 
+
+init_user_db()
+init_product_db()
 
 app = FastAPI()
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+outh2_scheme = OAuth2PasswordBearer(tokenUrl='token')
+
 
 # config of JWT
 SECRET_KEY = 'qwertyy1556'
