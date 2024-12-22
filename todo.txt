@@ -1,0 +1,59 @@
+# user/admin chat
+# visuals for website
+# admin panel?
+
+
+# create bids table
+# Implement WebSocket Chat
+# Real-Time Bidding
+
+
+
+# Create endpoints for:
+    Listing all products. done///
+    Viewing auction history for a specific product.
+    Placing bids on a product.
+    Marking a product as sold.   done///
+    Include admin-specific endpoints for approving auctions and managing users.
+    CRUD Done///
+
+
+
+
+///////////////////////now for now
+Frontend Integration
+
+Build or update your frontend (main.html) to:
+Display products and their current prices.
+Show a live chat section.
+Show real-time bid updates using WebSocket.
+Include a form to place bids or buy products.
+Authentication
+
+Ensure JWT-based login and registration are fully functional.
+Restrict access to admin endpoints to users with is_admin set to True.
+Admin Dashboard
+
+Create a separate admin section in the frontend to:
+View and manage active products.
+Ban users or manage bids.
+Approve or close auctions.
+Testing
+
+Test:
+WebSocket chat for real-time communication.
+Bid placement and real-time updates.
+User roles (admin vs. user) and their restrictions.
+Include edge cases like bid conflicts and WebSocket reconnections.
+Deployment
+
+Deploy your FastAPI application using tools like:
+Docker for containerization.
+NGINX or Gunicorn to serve your app.
+A cloud service (e.g., AWS, Heroku, or DigitalOcean) for hosting.
+Optional Enhancements
+
+Add:
+A search and filter feature for products.
+User profiles with bid histories.
+Email notifications for bid updates or winning notifications.

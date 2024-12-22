@@ -2,6 +2,7 @@ from typing import Optional
 import re
 from pydantic import BaseModel, EmailStr, field_validator
 
+
 # user validator for db
 class User(BaseModel):
     username: str
@@ -26,16 +27,18 @@ class User(BaseModel):
                 'Password must be at least 6 characters long, contain small and big letters, numbers, and special symbols')
         return value
 
-class Userhashed_passdord(User):
-    hashed_password : str
-
 
 # idk if i make it but it for products
 class Products(BaseModel):
     name: str
     desc: str
-    curr_price: float
-    is_saled: str
-    photo: Optional[bytes] = None
+    start_price: float
+
+
+class ProductName(BaseModel):
+    name: str
+
+
+
 
 

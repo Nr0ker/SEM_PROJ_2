@@ -15,7 +15,7 @@ def init_user_db():
             username TEXT NOT NULL,
             email TEXT NOT NULL,
             hashed_password TEXT NOT NULL,
-            is_admin BOOLEAN NOT NULL DEFAULT 0
+            is_admin BOOLEAN DEFAULT 0
         )
     ''')
 
@@ -34,9 +34,12 @@ def init_product_db():
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             desc TEXT NOT NULL,
-            curr_price FLOAT  NOT NULL,
-            is_sailed TEXT NOT NULL,
+            start_price FLOAT NOT NULL,
+            curr_price FLOAT,
+            is_sailed BOOLEAN DEFAULT 0,
             photo LONGBLOB
         )
     ''')
 
+init_product_db()
+init_user_db()
