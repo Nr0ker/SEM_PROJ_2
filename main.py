@@ -210,7 +210,7 @@ def sailed(product: ProductName, user : dict = Depends(get_current_user)):
 
     return {"message": f"Product '{product.name}' marked as sailed successfully"}
 
-# delete product from db -> TODO: delete from db after sailing product
+# delete product from db ->  delete from db after sailing product
 @app.delete('/delete_product')
 def delete_product(product: ProductName, user : dict = Depends(get_current_user)):
     email = user.get("email")  # Ensure `email` is passed in the JWT payload
