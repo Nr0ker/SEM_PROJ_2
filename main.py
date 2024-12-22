@@ -13,10 +13,11 @@ from fastapi.websockets import WebSocket, WebSocketDisconnect
 
 from models import User, Products, ProductName
 import uvicorn
-from db_file import init_product_db, init_user_db, get_product_db, get_user_db
+from db_file import init_product_db, init_user_db, get_product_db, get_user_db, init_bids_db
 
-init_user_db()
+init_bids_db()
 init_product_db()
+init_user_db()
 
 app = FastAPI()
 

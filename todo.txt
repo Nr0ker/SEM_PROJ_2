@@ -14,13 +14,13 @@
     Viewing auction history for a specific product.
     Placing bids on a product.
     Marking a product as sold.   done///
-    Include admin-specific endpoints for approving auctions and managing users.
+    Include admin-specific endpoints for approving auctions and managing users. /////halfway done/////
     CRUD Done///
 
 
 
 
-///////////////////////now for now
+///////////////////////end for now
 Frontend Integration
 
 Build or update your frontend (main.html) to:
