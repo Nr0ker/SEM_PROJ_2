@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auction Chat</title>
+    <style>
+        /* General style for the container */
+        .container {
+            display: flex;
+            flex-direction: row; /* Container arranges elements in a row */
+            min-height: 100vh;
+        }
+
+
+        .content {
+            flex: 1;
+            padding: 20px;
+        }
+
+
+        .chat {
+            width: 300px;
+            background-color: #f1f1f1;
+            border-left: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 2px 0px 5px rgba(0, 0, 0, 0.1);
+        }
+
+
+        #messages {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .message {
+            background-color: #dff0d8;
+            padding: 10px;
+            border-radius: 5px;
+            animation: message-appear 1s ease-out;
+        }
+
+        @keyframes message-appear {
+            0% {
+                opacity: 0;
+                transform: translateX(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+
+        #message {
+            width: calc(100% - 22px); /* Making the input field almost full width */
+            padding: 10px;
+            margin-right: 10px;
+        }
+
+        #sendMessage {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #sendMessage:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <h1>Welcome to the Auction!</h1>
+            <p>This is the main part of the page, where auction items or other content can be displayed.</p>
+        </div>
+        <div class="chat">
+            <h3>Auction Chat</h3>
+            <div id="messages"></div>
+            <input type="text" id="message" placeholder="Type a message..." />
+            <button id="sendMessage">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = new WebSocket("ws://127.0.0.1:8000/ws/chat/1");
+
+        const messageInput = document.getElementById("message");
+        const messagesDiv = document.getElementById("messages");
+        const sendMessageButton = document.getElementById("sendMessage");
+
+        sendMessageButton.addEventListener("click", () => {
+            const message = messageInput.value;
+            if (message) {
+                socket.send(message);
+                messageInput.value = "";
+            }
+        });
+
+
+        socket.onmessage = function(event) {
+            const message = event.data;
+            const messageDiv = document.createElement("div");
+            messageDiv.textContent = message;
+            messageDiv.classList.add("message");
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        };
+
+
+        socket.onclose = function(event) {
+            const messageDiv = document.createElement("div");
+            messageDiv.textContent = "Chat closed";
+            messagesDiv.appendChild(messageDiv);
+        };
+    </script>
+</body>
+</html>
