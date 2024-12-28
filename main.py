@@ -2,14 +2,16 @@ from datetime import datetime, timedelta, timezone
 import aiofiles
 import sqlite3
 from jose import JWTError, jwt
-from typing import Optional, List
+from typing import Optional
 import re
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from fastapi.websockets import WebSocket, WebSocketDisconnect
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 from models import User, Products, ProductName
 import uvicorn
@@ -20,6 +22,11 @@ init_product_db()
 init_user_db()
 
 app = FastAPI()
+
+templates = Jinja2Templates(directory="templates")
+
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # config of JWT
 SECRET_KEY = 'qwertyy1556'
@@ -216,7 +223,7 @@ def sailed(product: ProductName, user : dict = Depends(get_current_user)):
 # delete product from db ->  delete from db after sailing product
 @app.delete('/delete_product')
 def delete_product(product: ProductName, user : dict = Depends(get_current_user)):
-    email = user.get("email")  # Ensure `email` is passed in the JWT payload
+    email = user.get("email")
     if not email or not is_user_admin(email):
         raise HTTPException(status_code=403, detail="Access denied: Admins only")
     with get_product_db() as conn:
@@ -240,15 +247,13 @@ def delete_product(product: ProductName, user : dict = Depends(get_current_user)
     return {"message": f"Product '{product.name}' deleted successfully"}
 
 
+@app.get("/auction_chat/{auction_id}", response_class=HTMLResponse)
+async def auction_chat_page(request: Request, auction_id: int):
+    return templates.TemplateResponse("auction_chat.html", {"request": request, "auction_id": auction_id})
 
-@app.get("/auction_chat/{auction_id}")
-async def auction_chat_page(auction_id: int):
-    async with aiofiles.open("templates/auction_chat.html", mode='r') as file:
-        content = await file.read()
-    return HTMLResponse(content=content)
-@app.websocket("/ws/auction/{auction_id}")
-async def auction_chat(websocket: WebSocket, auction_id: int, user: dict = Depends(get_current_user)):
 
+@app.websocket("/ws/{auction_id}")
+async def websocket_endpoint(websocket: WebSocket, auction_id: int):
     await websocket.accept()
 
     if auction_id not in auction_chats:
@@ -256,18 +261,32 @@ async def auction_chat(websocket: WebSocket, auction_id: int, user: dict = Depen
     auction_chats[auction_id].append(websocket)
 
     try:
-        await broadcast_message(auction_id, f"User {user['username']} has joined the chat!")
         while True:
             message = await websocket.receive_text()
 
-            await broadcast_message(auction_id, f"{user['username']}: {message}")
+            await broadcast_message(auction_id, message)
     except WebSocketDisconnect:
         auction_chats[auction_id].remove(websocket)
-        await broadcast_message(auction_id, f"User {user['username']} has left the chat.")
+        if not auction_chats[auction_id]:
+            del auction_chats[auction_id]
 
-def broadcast_message(auction_id: int, message: str):
-    for connection in auction_chats[auction_id]:
-        connection.send_text(message)
+
+async def broadcast_message(auction_id: int, message: str):
+    if auction_id in auction_chats:
+        for connection in auction_chats[auction_id]:
+            try:
+                await connection.send_text(message)
+            except:
+                pass
+
+@app.get("/static/auction_chat/{auction_id}")
+async def auction_chat_page(auction_id: int):
+    async with aiofiles.open("static/auction_chat.html", mode='r') as file:
+        content = await file.read()
+    return HTMLResponse(content=content)
+
+
+
 
 
 
