@@ -15,8 +15,6 @@ class User(BaseModel):
     def username_validation(cls, value: str) -> str:
         if len(value) < 2:
             raise ValueError('Name should be more than 2 letters')
-        if not (value[0].isupper() and value[1:].islower()):
-            raise ValueError("Your name MUST start with a capital letter and the rest must be lowercase")
         return value
 
     @field_validator('password', mode='before')
@@ -37,8 +35,3 @@ class Products(BaseModel):
 
 class ProductName(BaseModel):
     name: str
-
-
-
-
-

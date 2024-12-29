@@ -40,6 +40,7 @@ def init_product_db():
             curr_price FLOAT,
             is_sailed BOOLEAN DEFAULT 0,
             photo LONGBLOB
+            in_stock BOOLEAN DEFAULT 0
         )
     ''')
     print('2')
@@ -69,6 +70,6 @@ def init_bids_db():
     print('1')
 
 
-init_bids_db()
-init_product_db()
-init_user_db()
+# init_bids_db()
+# init_product_db()
+# init_user_db()
