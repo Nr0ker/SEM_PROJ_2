@@ -60,33 +60,26 @@ connections = []
 # Decode JWT and get current user
 def get_current_user(token: str = Cookie(None)):
     if not token:
-        print('No token given')
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        print('no token given')
+        print(token)
+        return None
 
     # Remove the "Bearer " prefix if present
     token = token.replace("Bearer ", "") if token.startswith("Bearer ") else token
 
     try:
         # Decode the token
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
         username: str = payload.get("sub")
 
-        if not username:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        if username is None:
+            print('no username given')
+            return None
 
-        return {"username": username}  # Return only username
+        return {"username": username}
     except JWTError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="jwt error",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -126,7 +119,7 @@ async def register(
         )
         conn.commit()
 
-        # Generate JWT token with only username (no email)
+        # Generate JWT token with only username
         access_token_expires = timedelta(minutes=30)
         access_token = create_access_token(
             data={"sub": user.username},  # Only include username (sub)
@@ -137,7 +130,7 @@ async def register(
         response = RedirectResponse(url="/", status_code=303)
         response.set_cookie(
             key="Authorization",
-            value=f"Bearer {access_token}",
+            value=access_token,
             httponly=True,
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             secure=True,
