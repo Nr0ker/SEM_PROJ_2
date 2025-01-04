@@ -4,6 +4,7 @@ import sqlite3
 from jose import JWTError, jwt
 from typing import Optional
 import re
+import asyncio
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import HTMLResponse
@@ -12,29 +13,39 @@ from passlib.context import CryptContext
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
+from contextlib import asynccontextmanager
 from models import User, Products, ProductName
 import uvicorn
 from db_file import init_product_db, init_user_db, get_product_db, get_user_db, init_bids_db
 
+# ініціалізація БД
 init_bids_db()
 init_product_db()
 init_user_db()
 
 app = FastAPI()
 
+# Додавання CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Підключення шаблонів
 templates = Jinja2Templates(directory="templates")
-
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# config of JWT
+# конфігурація JWT
 SECRET_KEY = 'qwertyy1556'
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
-
 
 auction_chats = {}
 
@@ -42,89 +53,46 @@ auction_chats = {}
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-
-# password checking
+# перевірка паролю
 def verify_password(plait_password, hashed_password):
     return pwd_context.verify(plait_password, hashed_password)
 
-
-# token creation
+# створення токену
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire, 'email': data.get('email')})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-    # Include the email in the token payload
-    to_encode.update({'email': data.get('email')})  # Add email to the token payload
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+# Додаткові функції
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Сервер стартує...")
+    yield
+    print("Сервер завершує роботу...")
 
-
-# list of active users
-connections = []
-
-# render main page
+# Рендер головної сторінки
 @app.get("/", response_class=HTMLResponse)
 async def read_html():
-    # Open and read the HTML file asynchronously
     async with aiofiles.open("templates/main.html", mode='r') as file:
-        content = await file.read()
-    return content
+        return await file.read()
 
-
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    try:
-        # Decode the token
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        email: str = payload.get("email")  # Extract email from the payload
-
-        if username is None or email is None:  # Check for both username and email
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # Debugging - Print to check the decoded payload
-        print(f"Decoded JWT payload: {payload}")
-
-        return {"username": username, "email": email}  # Return username and email
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-# register function
+# Реєстрація користувача
 @app.post('/register')
 async def register(user: User):
     hashed_password = get_password_hash(user.password)
     with get_user_db() as conn:
         cursor = conn.execute('SELECT * FROM users WHERE email = ?', (user.email,))
-        existing_user = cursor.fetchone()
-        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-        regex_email = re.match(email_regex, user.email) is not None
-        if not regex_email:
-            return {'message': 'Your email is not valid, please use an email like useremail@gmail.com'}
-        elif existing_user:
+        if cursor.fetchone():
             raise HTTPException(status_code=400, detail="Email already in use")
-        else:
-            try:
-                conn.execute('INSERT INTO users (username, email, hashed_password, is_admin) VALUES(?, ?, ?, ?)',
-                             (user.username, user.email, hashed_password, user.is_admin))
-                conn.commit()
-                return {"message": "User successfully registered"}
-            except sqlite3.Error as s:
-                raise HTTPException(status_code=400, detail="Something went wrong")
+        elif not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', user.email):
+            return {'message': 'Invalid email format'}
+        conn.execute('INSERT INTO users (username, email, hashed_password, is_admin) VALUES (?, ?, ?, ?)',
+                     (user.username, user.email, hashed_password, user.is_admin))
+        conn.commit()
+    return {"message": "User successfully registered"}
 
-
-# login
+# Логін користувача
 @app.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     with get_user_db() as conn:
@@ -132,185 +100,47 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         cursor.execute('SELECT * FROM users WHERE username = ?', (form_data.username,))
         user = cursor.fetchone()
         if not user or not verify_password(form_data.password, user['hashed_password']):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
+        access_token = create_access_token(data={"sub": form_data.username, "email": user['email']})
+        return {"access_token": access_token, "token_type": "bearer", 'msg': 'Welcome'}
 
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": form_data.username, "email": user['email']}, expires_delta=access_token_expires
-        )
-
-        return {"access_token": access_token, "token_type": "bearer", 'msg': 'Welcome sir'}
-
-
-# Function to check if the user is an admin
-def is_user_admin(email: str) -> bool:
-    with get_user_db() as conn:
-        cursor = conn.execute('SELECT is_admin FROM users WHERE email = ?', (email,))
-        result = cursor.fetchone()
-
-        if result:
-            return result['is_admin']
-        return False
-
-
-# Endpoint to get all products
+# Одержання всіх продуктів
 @app.get('/get_all_products')
-def get_all_products(user: dict = Depends(get_current_user)):
-    email = user.get("email")  # Ensure `email` is passed in the JWT payload
-    if not email or not is_user_admin(email):
-        raise HTTPException(status_code=403, detail="Access denied: Admins only")
-
+def get_all_products():
     with get_product_db() as conn:
-        cursor = conn.execute('SELECT * FROM products')  # Adjust table name as needed
-        products = cursor.fetchall()
-
+        products = conn.execute('SELECT * FROM products').fetchall()
     return {"products": products}
 
-
-# adding products in db
+# Додавання продуктів
 @app.post('/add_products')
-def add_products(product: Products, user: dict = Depends(get_current_user)):
-    email = user.get("email")  # Ensure `email` is passed in the JWT payload
-    if not email or not is_user_admin(email):
-        raise HTTPException(status_code=403, detail="Access denied: Admins only")
-
-    curr_price = product.start_price # add current price -> will change in future
-
+def add_products(product: Products):
     with get_product_db() as conn:
-        conn.execute(
-            '''
-            INSERT INTO products (name, desc, start_price, curr_price)
-            VALUES (?, ?, ?, ?)
-            ''',
-            (product.name, product.desc, product.start_price, curr_price)
-        )
+        conn.execute('INSERT INTO products (name, desc, start_price, curr_price) VALUES (?, ?, ?, ?)',
+                     (product.name, product.desc, product.start_price, product.start_price))
         conn.commit()
-
     return {"message": f"Product '{product.name}' added successfully"}
 
-
-# is sailed status
-@app.post('/is_sailed')
-def sailed(product: ProductName, user : dict = Depends(get_current_user)):
-    email = user.get("email")  # Ensure `email` is passed in the JWT payload
-    if not email or not is_user_admin(email):
-        raise HTTPException(status_code=403, detail="Access denied: Admins only")
-    with get_product_db() as conn:
-        cursor = conn.cursor()
-        #check if user exist
-        cursor.execute('SELECT * FROM products WHERE name = ?', (product.name,))
-        existing_product = cursor.fetchone()
-        if not existing_product:
-            raise HTTPException(status_code=404, detail=f"Product '{product.name}' not found")
-
-        # Update
-        conn.execute(
-            '''
-            UPDATE products
-            SET is_sailed = 1  -- Mark as sailed
-            WHERE name = ?
-            ''',
-            (product.name,)
-        )
-        conn.commit()
-
-    return {"message": f"Product '{product.name}' marked as sailed successfully"}
-
-# delete product from db ->  delete from db after sailing product
-@app.delete('/delete_product')
-def delete_product(product: ProductName, user : dict = Depends(get_current_user)):
-    email = user.get("email")
-    if not email or not is_user_admin(email):
-        raise HTTPException(status_code=403, detail="Access denied: Admins only")
-    with get_product_db() as conn:
-        cursor = conn.cursor()
-        # check if user exist
-        cursor.execute('SELECT * FROM products WHERE name = ?', (product.name,))
-        existing_product = cursor.fetchone()
-        if not existing_product:
-            raise HTTPException(status_code=404, detail=f"Product '{product.name}' not found")
-
-        # Delete
-        conn.execute(
-            '''
-            DELETE FROM products
-            WHERE name = ?
-            ''',
-            (product.name,)
-        )
-        conn.commit()
-
-    return {"message": f"Product '{product.name}' deleted successfully"}
-
-
-@app.get("/auction_chat/{auction_id}", response_class=HTMLResponse)
-async def auction_chat_page(request: Request, auction_id: int):
-    return templates.TemplateResponse("auction_chat.html", {"request": request, "auction_id": auction_id})
-
-
+# Відправка повідомлень для аукціону
 @app.websocket("/ws/{auction_id}")
 async def websocket_endpoint(websocket: WebSocket, auction_id: int):
     await websocket.accept()
-
-    if auction_id not in auction_chats:
-        auction_chats[auction_id] = []
-    auction_chats[auction_id].append(websocket)
-
+    auction_chats.setdefault(auction_id, []).append(websocket)
     try:
         while True:
             message = await websocket.receive_text()
-
             await broadcast_message(auction_id, message)
     except WebSocketDisconnect:
         auction_chats[auction_id].remove(websocket)
         if not auction_chats[auction_id]:
             del auction_chats[auction_id]
 
-
 async def broadcast_message(auction_id: int, message: str):
-    if auction_id in auction_chats:
-        for connection in auction_chats[auction_id]:
-            try:
-                await connection.send_text(message)
-            except:
-                pass
+    for connection in auction_chats.get(auction_id, []):
+        try:
+            await connection.send_text(message)
+        except:
+            pass
 
-@app.get("/static/auction_chat/{auction_id}")
-async def auction_chat_page(auction_id: int):
-    async with aiofiles.open("static/auction_chat.html", mode='r') as file:
-        content = await file.read()
-    return HTMLResponse(content=content)
-
-
-
-
-
-
-# # update produkt from user_part
-# def update_product(product: Products):
-#     with get_product_db() as conn:
-#         cursor = conn.cursor()
-#         # check if user exist
-#         cursor.execute('SELECT * FROM products WHERE name = ?', (product.name,))
-#         existing_product = cursor.fetchone()
-#         if not existing_product:
-#             raise HTTPException(status_code=404, detail=f"Product '{product.name}' not found")
-#
-#         # Delete
-#         conn.execute(
-#             '''
-#             DELETE FROM products
-#             WHERE name = ?
-#             ''',
-#             (product.name,)
-#         )
-#         conn.commit()
-#
-#     return {"message": f"Product '{product.name}' deleted successfully"}
-
+# Запуск додатку
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
