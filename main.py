@@ -1,27 +1,47 @@
+from fastapi import FastAPI, Depends, HTTPException, status, Form, Request, Cookie
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from sqlite3 import Connection
+from fastapi import FastAPI, HTTPException, Depends, Form, Cookie
+from pydantic import BaseModel, EmailStr, Field
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from datetime import datetime, timedelta, timezone
-import aiofiles
-import sqlite3
 from jose import JWTError, jwt
-from typing import Optional
-import re
-
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
-from fastapi.websockets import WebSocket, WebSocketDisconnect
+from typing import Optional
+from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.requests import Request
 
-from models import User, Products, ProductName
-import uvicorn
-from db_file import init_product_db, init_user_db, get_product_db, get_user_db, init_bids_db
-
-init_bids_db()
-init_product_db()
-init_user_db()
-
+# FastAPI app
 app = FastAPI()
 
-# config of JWT
+# Set up templates and static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+####### db functions ##############
+from db_file import init_db, Base, Bid, User, Product
+
+# Database connection
+DATABASE_URL = "sqlite:///./database.db"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+init_db()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+####### authorization functions ##############
+
+# Configurations
 SECRET_KEY = 'qwertyy1556'
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -29,237 +49,113 @@ pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
 
-# JWT Token Creation
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-
-# password checking
-def verify_password(plait_password, hashed_password):
-    return pwd_context.verify(plait_password, hashed_password)
-
-
-# token creation
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
-
-    # Include the email in the token payload
-    to_encode.update({'email': data.get('email')})  # Add email to the token payload
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
-# list of active users
-connections = []
-
-# render main page
-@app.get("/", response_class=HTMLResponse)
-async def read_html():
-    # Open and read the HTML file asynchronously
-    async with aiofiles.open("main.html", mode='r') as file:
-        content = await file.read()
-    return content
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+
+def get_current_user_from_token(token: Optional[str], db: Session):
+    if not token:
+        return None
     try:
-        # Decode the token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        email: str = payload.get("email")  # Extract email from the payload
-
-        if username is None or email is None:  # Check for both username and email
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # Debugging - Print to check the decoded payload
-        print(f"Decoded JWT payload: {payload}")
-
-        return {"username": username, "email": email}  # Return username and email
+        if username is None:
+            return None
+        user = db.query(User).filter(User.username == username).first()
+        return user
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return None
+####### login + register functions ##############
+
+# Routes
+@app.post("/register")
+async def register(
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.username == username).first()
+    if user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    hashed_password = get_password_hash(password)
+
+    # Default role can be "user" or any role you want
+    new_user = User(username=username, email=email, hashed_password=hashed_password)
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return RedirectResponse(url="/", status_code=303)
 
 
-# register function
-@app.post('/register')
-async def register(user: User):
-    hashed_password = get_password_hash(user.password)
-    with get_user_db() as conn:
-        cursor = conn.execute('SELECT * FROM users WHERE email = ?', (user.email,))
-        existing_user = cursor.fetchone()
-        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-        regex_email = re.match(email_regex, user.email) is not None
-        if not regex_email:
-            return {'message': 'Your email is not valid, please use an email like useremail@gmail.com'}
-        elif existing_user:
-            raise HTTPException(status_code=400, detail="Email already in use")
-        else:
-            try:
-                conn.execute('INSERT INTO users (username, email, hashed_password, is_admin) VALUES(?, ?, ?, ?)',
-                             (user.username, user.email, hashed_password, user.is_admin))
-                conn.commit()
-                return {"message": "User successfully registered"}
-            except sqlite3.Error as s:
-                raise HTTPException(status_code=400, detail="Something went wrong")
-
-
-# login
 @app.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    with get_user_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM users WHERE username = ?', (form_data.username,))
-        user = cursor.fetchone()
-        if not user or not verify_password(form_data.password, user['hashed_password']):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # Проверка на специальные данные администратора
+    if form_data.username == "admin" and form_data.password == "admin":
+        response = RedirectResponse(url="/admin", status_code=303)
+        response.set_cookie(key="access_token", value="admin", httponly=True)
+        return response
 
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": form_data.username, "email": user['email']}, expires_delta=access_token_expires
-        )
+    # Проверка в базе данных
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
 
-        return {"access_token": access_token, "token_type": "bearer", 'msg': 'Welcome sir'}
+    access_token = create_access_token(data={"sub": user.username})
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(key="access_token", value=f"{access_token}", httponly=True)
+    return response
 
+@app.get("/logout")
+async def logout(response: Response):
+    """Handle user logout."""
+    response = RedirectResponse(url="/login-page", status_code=302)
+    response.delete_cookie("access_token")  # Delete the JWT token cookie
+    return response
 
-# Function to check if the user is an admin
-def is_user_admin(email: str) -> bool:
-    with get_user_db() as conn:
-        cursor = conn.execute('SELECT is_admin FROM users WHERE email = ?', (email,))
-        result = cursor.fetchone()
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
+    user = get_current_user_from_token(access_token, db)
+    if user:
+        return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user": None})
 
-        if result:
-            return result['is_admin']
-        return False
-
-
-# Endpoint to get all products
-@app.get('/get_all_products')
-def get_all_products(user: dict = Depends(get_current_user)):
-    email = user.get("email")  # Ensure `email` is passed in the JWT payload
-    if not email or not is_user_admin(email):
-        raise HTTPException(status_code=403, detail="Access denied: Admins only")
-
-    with get_product_db() as conn:
-        cursor = conn.execute('SELECT * FROM products')  # Adjust table name as needed
-        products = cursor.fetchall()
-
-    return {"products": products}
+@app.get("/index", response_class=HTMLResponse)
+async def read_root(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
+    user = get_current_user_from_token(access_token, db)
+    if user:
+        return templates.TemplateResponse("index.html", {"request": request, "user": user})
+    return templates.TemplateResponse("index.html", {"request": request, "user": None})
 
 
-# adding products in db
-@app.post('/add_products')
-def add_products(product: Products, user: dict = Depends(get_current_user)):
-    email = user.get("email")  # Ensure `email` is passed in the JWT payload
-    if not email or not is_user_admin(email):
-        raise HTTPException(status_code=403, detail="Access denied: Admins only")
-
-    curr_price = product.start_price # add current price -> will change in future
-
-    with get_product_db() as conn:
-        conn.execute(
-            '''
-            INSERT INTO products (name, desc, start_price, curr_price)
-            VALUES (?, ?, ?, ?)
-            ''',
-            (product.name, product.desc, product.start_price, curr_price)
-        )
-        conn.commit()
-
-    return {"message": f"Product '{product.name}' added successfully"}
+@app.get("/register-page", response_class=HTMLResponse)
+async def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
 
 
-# is sailed status
-@app.post('/is_sailed')
-def sailed(product: ProductName, user : dict = Depends(get_current_user)):
-    email = user.get("email")  # Ensure `email` is passed in the JWT payload
-    if not email or not is_user_admin(email):
-        raise HTTPException(status_code=403, detail="Access denied: Admins only")
-    with get_product_db() as conn:
-        cursor = conn.cursor()
-        #check if user exist
-        cursor.execute('SELECT * FROM products WHERE name = ?', (product.name,))
-        existing_product = cursor.fetchone()
-        if not existing_product:
-            raise HTTPException(status_code=404, detail=f"Product '{product.name}' not found")
-
-        # Update
-        conn.execute(
-            '''
-            UPDATE products
-            SET is_sailed = 1  -- Mark as sailed
-            WHERE name = ?
-            ''',
-            (product.name,)
-        )
-        conn.commit()
-
-    return {"message": f"Product '{product.name}' marked as sailed successfully"}
-
-# delete product from db ->  delete from db after sailing product
-@app.delete('/delete_product')
-def delete_product(product: ProductName, user : dict = Depends(get_current_user)):
-    email = user.get("email")  # Ensure `email` is passed in the JWT payload
-    if not email or not is_user_admin(email):
-        raise HTTPException(status_code=403, detail="Access denied: Admins only")
-    with get_product_db() as conn:
-        cursor = conn.cursor()
-        # check if user exist
-        cursor.execute('SELECT * FROM products WHERE name = ?', (product.name,))
-        existing_product = cursor.fetchone()
-        if not existing_product:
-            raise HTTPException(status_code=404, detail=f"Product '{product.name}' not found")
-
-        # Delete
-        conn.execute(
-            '''
-            DELETE FROM products
-            WHERE name = ?
-            ''',
-            (product.name,)
-        )
-        conn.commit()
-
-    return {"message": f"Product '{product.name}' deleted successfully"}
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
-# # update produkt from user_part
-# def update_product(product: Products):
-#     with get_product_db() as conn:
-#         cursor = conn.cursor()
-#         # check if user exist
-#         cursor.execute('SELECT * FROM products WHERE name = ?', (product.name,))
-#         existing_product = cursor.fetchone()
-#         if not existing_product:
-#             raise HTTPException(status_code=404, detail=f"Product '{product.name}' not found")
-#
-#         # Delete
-#         conn.execute(
-#             '''
-#             DELETE FROM products
-#             WHERE name = ?
-#             ''',
-#             (product.name,)
-#         )
-#         conn.commit()
-#
-#     return {"message": f"Product '{product.name}' deleted successfully"}
+
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
 

@@ -3,7 +3,7 @@
 # admin panel?
 
 
-# create bids table
+# create bids table done///
 # Implement WebSocket Chat
 # Real-Time Bidding
 

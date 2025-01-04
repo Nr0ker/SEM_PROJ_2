@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Add Product</title>
+</head>
+<body>
+{% if user %}
+    <h1>Welcome, {{ user['username'] }}</h1>
+    <form action="/add_product_user_side" method="post">
+        <label for="name">Product Name:</label>
+        <input type="text" id="name" name="name" required>
+        <label for="desc">Description:</label>
+        <textarea id="desc" name="desc" required></textarea>
+        <label for="price">Starting Price:</label>
+        <input type="number" id="price" name="start_price" required>
+        <button type="submit">Add Product</button>
+    </form>
+{% else %}
+    <p>
+    Please <a href="/token">Log in</a> or <a href="/register">Sign up</a> to add products.
+    </p>
+{% endif %}
+</body>
+</html>
