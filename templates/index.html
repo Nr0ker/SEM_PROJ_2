@@ -7,11 +7,11 @@
 <body>
 {% if not user %}
 <p>
-    Please <a href="/login-page">Log in</a> or <a href="/register-page">Sign up</a> to add products.
+    Please <a href="/login">Log in</a> or <a href="/register-page">Sign up</a> to add products.
 </p>
 {% else %}
     <h1>Welcome, {{ user['username'] }}</h1>
-{% endif %}
 
+{% endif %}
 </body>
 </html>
