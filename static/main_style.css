@@ -1,0 +1,153 @@
+/* main_style.css */
+
+/* Basic Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #000;  /* Default text color to black */
+}
+
+/* Main Container */
+.main-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Large Window (Most Valuable Product) */
+.large-window {
+    width: 100%;
+    height: 60vh;  /* Takes up 60% of the viewport height */
+    background-color: #fff;
+    margin-bottom: 40px;  /* Increased margin-bottom for more space between large and small windows */
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;  /* Set to relative to allow absolute positioning of text */
+}
+
+.large-window img {
+    width: 70%; /* Image takes up 70% of the container width */
+    height: auto;
+    border-radius: 8px;
+}
+
+.product-info {
+    position: absolute;
+    color: black;  /* Make text color black */
+    text-align: center;
+}
+
+.product-info h1 {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.product-info p {
+    font-size: 20px;
+    margin-bottom: 20px;
+}
+
+.product-info button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.product-info button:hover {
+    background-color: #218838;
+}
+
+/* Positioning the text in the bottom center of the large window */
+.large-window .product-info {
+    bottom: 20px;  /* Position it 20px from the bottom */
+    left: 50%;     /* Center it horizontally */
+    transform: translateX(-50%);  /* Adjust for exact center alignment */
+}
+
+/* Bottom Section (Two Smaller Windows) */
+.bottom-section {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;  /* Reduced gap between small windows */
+}
+
+.small-window {
+    width: 48%;  /* Each small window takes up about half of the row */
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 400px;  /* Increased height for the smaller windows */
+    position: relative;  /* Set to relative to allow absolute positioning of text */
+}
+
+.small-window img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+.small-window h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.small-window p {
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+
+.small-window button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.small-window button:hover {
+    background-color: #0056b3;
+}
+
+/* Positioning the text in the left lower corner of the small windows */
+.small-window .product-info {
+    position: absolute;
+    bottom: 20px;  /* Position it 20px from the bottom */
+    right: 20px;    /* Position it 20px from the left */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .large-window {
+        height: 40vh;  /* Reduce the size of the large window on smaller screens */
+    }
+
+    .bottom-section {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .small-window {
+        width: 100%;  /* Make the small windows full width on smaller screens */
+        margin-bottom: 20px;
+        height: 300px; /* Reduce height on smaller screens */
+    }
+}

@@ -1,0 +1,39 @@
+{% extends 'header.html' %}
+
+{% block title %}Auction - Main Page{% endblock %}
+{% block style %}<link rel="stylesheet" href="/static/main_style.css">{% endblock %}
+
+{% block content %}
+<body>
+    <div class="main-container">
+        <!-- Top Section (Large Window) -->
+        <div class="large-window">
+            <div class="product-info">
+                <h1>Most Valuable Product</h1>
+                <img src="/static/most-valuable-product.jpg" alt="Most Valuable Product">
+                <p>Starting Price: $5000</p>
+                <button>Place Bid</button>
+            </div>
+        </div>
+
+        <!-- Bottom Section (Two Smaller Windows) -->
+        <div class="bottom-section">
+            <div class="small-window">
+                <div class="product-info">
+                    <h2>Popular Item #1</h2>
+                    <img src="/static/popular-product1.jpg" alt="Popular Item #1">
+                    <p>Current Bid: $1200</p>
+                    <button>Place Bid</button>
+                </div>
+            </div>
+            <div class="small-window">
+                <div class="product-info">
+                    <h2>Popular Item #2</h2>
+                    <img src="/static/popular-product2.jpg" alt="Popular Item #2">
+                    <p>Current Bid: $950</p>
+                    <button>Place Bid</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

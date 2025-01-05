@@ -1,0 +1,126 @@
+Index: main.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import aiofiles\r\nfrom fastapi import FastAPI\r\nfrom fastapi.responses import HTMLResponse\r\nfrom fastapi.security import OAuth2PasswordBearer\r\nfrom websocket import WebSocket\r\nfrom db_file import init_product_db, init_user_db, get_product_db, get_user_db\r\nimport uvicorn\r\nimport websocket\r\nfrom passlib.context import CryptContext\r\nfrom pathlib import Path\r\n\r\ninit_user_db()\r\ninit_product_db()\r\n\r\napp = FastAPI()\r\npwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')\r\nouth2_scheme = OAuth2PasswordBearer(tokenUrl='token')\r\n\r\n\r\ndef get_password_hash(password):\r\n    return pwd_context.hash(password)\r\n # password checking\r\ndef verify_password(plait_password, hashed_password):\r\n    return pwd_context.verify(plait_password, hashed_password)\r\n\r\n\r\n# BASE_DIR = Path(__file__).resolve().parent\r\n# HTML_FILE_PATH = BASE_DIR / \"main.html\"\r\n# render main page\r\n@app.get(\"/\", response_class=HTMLResponse)\r\nasync def read_html():\r\n    # Open and read the HTML file asynchronously\r\n    async with aiofiles.open(\"main.html\", mode='r') as file:\r\n        content = await file.read()\r\n    return content\r\n\r\n\r\nif __name__ == \"__main__\":\r\n    uvicorn.run(app, host=\"127.0.0.1\", port=8000)\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/main.py b/main.py
+--- a/main.py	
++++ b/main.py	
+@@ -1,31 +1,49 @@
++from datetime import datetime, timedelta, timezone
+ import aiofiles
+-from fastapi import FastAPI
++from fastapi import FastAPI, Depends, HTTPException, status
+ from fastapi.responses import HTMLResponse
+-from fastapi.security import OAuth2PasswordBearer
+-from websocket import WebSocket
+-from db_file import init_product_db, init_user_db, get_product_db, get_user_db
+-import uvicorn
+-import websocket
++from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+ from passlib.context import CryptContext
+-from pathlib import Path
++import sqlite3
++from jose import JWTError, jwt
++from typing import Optional
++import re
++from models import User
++import uvicorn
++from db_file import get_user_db, get_product_db
+ 
+-init_user_db()
+-init_product_db()
+ 
+ app = FastAPI()
+-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+-outh2_scheme = OAuth2PasswordBearer(tokenUrl='token')
+ 
++# config of JWT
++SECRET_KEY = 'qwertyy1556'
++ALGORITHM = 'HS256'
++ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ 
++# JWT Token Creation
+ def get_password_hash(password):
+     return pwd_context.hash(password)
+  # password checking
+ def verify_password(plait_password, hashed_password):
+     return pwd_context.verify(plait_password, hashed_password)
+ 
++ # token creation
++def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
++    to_encode = data.copy()
++    if expires_delta:
++        expire = datetime.now(timezone.utc) + expires_delta
++    else:
++        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
++    to_encode.update({'exp': expire})
++    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
++    return encoded_jwt
++
+ 
+-# BASE_DIR = Path(__file__).resolve().parent
+-# HTML_FILE_PATH = BASE_DIR / "main.html"
++# list of active users
++connections = []
++pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
++outh2_scheme = OAuth2PasswordBearer(tokenUrl='token')
++
+ # render main page
+ @app.get("/", response_class=HTMLResponse)
+ async def read_html():
+@@ -35,5 +53,50 @@
+     return content
+ 
+ 
++# register function
++@app.post('/register')
++async def register(user: User):
++    hashed_password = get_password_hash(user.password)
++    with get_user_db() as conn:
++        cursor = conn.execute('SELECT * FROM users WHERE email = ?', (user.email,))
++        existing_user = cursor.fetchone()
++        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
++        regex_email = re.match(email_regex, user.email) is not None
++        if not regex_email:
++            return {'message': 'Your email is not valid, please use an email like useremail@gmail.com'}
++        elif existing_user:
++            raise HTTPException(status_code=400, detail="Email already in use")
++        else:
++            try:
++                conn.execute('INSERT INTO users (username, email, hashed_password) VALUES(?, ?, ?)',
++                             (user.username, user.email, hashed_password))
++                conn.commit()
++                return {"message": "User successfully registered"}
++            except sqlite3.Error as s:
++                raise HTTPException(status_code=400, detail="Something went wrong")
++
++
++# login
++@app.post("/login")
++async def login(form_data: OAuth2PasswordRequestForm = Depends()):
++    with get_user_db() as conn:
++        cursor = conn.cursor()
++        cursor.execute('SELECT * FROM users WHERE username = ?', (form_data.username,))
++        user = cursor.fetchone()
++
++        if not user or not verify_password(form_data.password, user['hashed_password']):
++            raise HTTPException(
++                status_code=status.HTTP_401_UNAUTHORIZED,
++                detail="Incorrect username or password",
++                headers={"WWW-Authenticate": "Bearer"}
++            )
++
++        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
++        access_token = create_access_token(
++            data={"sub": form_data.username}, expires_delta=access_token_expires
++        )
++        return {"access_token": access_token, "token_type": "bearer"}
++
++
+ if __name__ == "__main__":
+-    uvicorn.run(app, host="127.0.0.1", port=8000)
++    uvicorn.run(app, host="127.0.0.1", port=8000)
+\ No newline at end of file
