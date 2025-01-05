@@ -15,7 +15,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
-
+from fastapi.websockets import WebSocket, WebSocketDisconnect
+from contextlib import asynccontextmanager
 # FastAPI app
 app = FastAPI()
 
@@ -31,7 +32,7 @@ DATABASE_URL = "sqlite:///./database.db"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 init_db()
-
+auction_chats = {}
 def get_db():
     db = SessionLocal()
     try:
@@ -152,8 +153,34 @@ async def register_page(request: Request):
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
+# Додаткові функції
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Сервер стартує...")
+    yield
+    print("Сервер завершує роботу...")
 
 
+# Відправка повідомлень для аукціону
+@app.websocket("/ws/{auction_id}")
+async def websocket_endpoint(websocket: WebSocket, auction_id: int):
+    await websocket.accept()
+    auction_chats.setdefault(auction_id, []).append(websocket)
+    try:
+        while True:
+            message = await websocket.receive_text()
+            await broadcast_message(auction_id, message)
+    except WebSocketDisconnect:
+        auction_chats[auction_id].remove(websocket)
+        if not auction_chats[auction_id]:
+            del auction_chats[auction_id]
+
+async def broadcast_message(auction_id: int, message: str):
+    for connection in auction_chats.get(auction_id, []):
+        try:
+            await connection.send_text(message)
+        except:
+            pass
 
 if __name__ == "__main__":
     import uvicorn
