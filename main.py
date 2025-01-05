@@ -20,6 +20,7 @@ from contextlib import asynccontextmanager
 # FastAPI app
 app = FastAPI()
 
+
 # Set up templates and static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
