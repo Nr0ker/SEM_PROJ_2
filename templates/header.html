@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}My Website{% endblock %}</title>
+    <link rel="stylesheet" href="/static/header_style.css">
+    {% block style %}
+    {% endblock %}
+</head>
+<body>
+    <header class="line-header">
+        <div class="left-section">
+            <a href="/" class="main-page">Main Page</a>
+        </div>
+        <div class="right-section">
+            <span class="username" id="username">
+            {% if user %}
+                {{ user['username'] }}
+            {% else %}
+                Guest
+            {% endif %}
+            </span>
+            <div class="dropdown">
+                <img src="/static/pfp.jpg" alt="Profile Icon" class="profile-icon" id="profile-icon" />
+                <ul class="dropdown-menu" id="dropdown-menu">
+                    <li><a href="/settings">Settings</a></li>
+                    <li><a href="/profile">Profile</a></li>
+                    <li><a href="/cart">My Cart</a></li>
+                    <li><a href="/logout">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    {% block content %}
+    {% endblock %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const profileIcon = document.getElementById('profile-icon');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+            const dropdown = profileIcon.closest('.dropdown');
+
+            // Toggle dropdown when the icon is clicked
+            profileIcon.addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent event from bubbling to the document
+                dropdown.classList.toggle('active');
+            });
+
+            // Close the dropdown when clicking outside its range
+            document.addEventListener('click', (event) => {
+                if (!dropdown.contains(event.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

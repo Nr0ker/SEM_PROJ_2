@@ -25,7 +25,6 @@ Frontend Integration
 
 Build or update your frontend (main.html) to:
 Display products and their current prices.
-Show a live chat section.
 Show real-time bid updates using WebSocket.
 Include a form to place bids or buy products.
 Authentication
