@@ -6,7 +6,7 @@ from typing import Optional
 import re
 import asyncio
 
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
@@ -16,14 +16,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from contextlib import asynccontextmanager
+
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import RedirectResponse
+
 from models import User, Products, ProductName
 import uvicorn
-from db_file import init_product_db, init_user_db, get_product_db, get_user_db, init_bids_db
+from db_file import init_product_db, init_user_db, get_product_db, get_user_db, init_bids_db, init_blocked_db
 
 # ініціалізація БД
 init_bids_db()
 init_product_db()
 init_user_db()
+init_blocked_db()
 
 app = FastAPI()
 
@@ -35,6 +40,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SessionMiddleware, secret_key="secret_key_for_sessions")
 
 # Підключення шаблонів
 templates = Jinja2Templates(directory="templates")
@@ -48,6 +55,9 @@ pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
 auction_chats = {}
+
+
+ADMIN_CODE = "1234"
 
 # JWT Token Creation
 def get_password_hash(password):
@@ -73,9 +83,12 @@ async def lifespan(app: FastAPI):
 
 # Рендер головної сторінки
 @app.get("/", response_class=HTMLResponse)
-async def read_html():
-    async with aiofiles.open("templates/main.html", mode='r') as file:
-        return await file.read()
+async def read_html(request: Request):
+    # Отримання ролі з сесії (default = "user")
+    role = request.session.get("role", "user")
+    async with aiofiles.open("templates/main.html", mode="r") as file:
+        content = await file.read()
+        return content.replace("{{ role }}", role)
 
 # Реєстрація користувача
 @app.post('/register')
@@ -140,6 +153,27 @@ async def broadcast_message(auction_id: int, message: str):
             await connection.send_text(message)
         except:
             pass
+
+@app.get("/get_admin_role", response_class=HTMLResponse)
+async def get_admin_role_page():
+    async with aiofiles.open("templates/get_admin_role.html", mode="r") as file:
+        return await file.read()
+
+
+@app.post("/get_admin_role")
+async def verify_admin_code(admin_code: str = Form(...), request: Request = None):
+    if admin_code == ADMIN_CODE:
+        request.session["role"] = "admin"
+        return RedirectResponse("/", status_code=303)
+    else:
+        return RedirectResponse("/invalid_code", status_code=303)
+
+
+@app.get("/invalid_code", response_class=HTMLResponse)
+async def invalid_code_page():
+    async with aiofiles.open("templates/invalid_code.html", mode="r") as file:
+        return await file.read()
+
 
 # Запуск додатку
 if __name__ == "__main__":

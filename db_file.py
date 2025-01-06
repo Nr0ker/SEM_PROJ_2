@@ -69,6 +69,30 @@ def init_bids_db():
     print('1')
 
 
+def get_blocked_db():
+    conn = sqlite3.connect("blocked_users.db")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Ініціалізація бази даних
+def init_blocked_db():
+    conn = get_blocked_db()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS blocked_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,   
+            user_id INTEGER NOT NULL,            
+            username TEXT NOT NULL,                
+            reason TEXT,                          
+            block_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+            duration INTEGER,                     
+            blocked_by TEXT                       
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+
+init_blocked_db()
 init_bids_db()
 init_product_db()
 init_user_db()
