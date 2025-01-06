@@ -1,0 +1,77 @@
+{% extends 'header.html' %}
+
+{% block title %}{{ product['name'] }}{% endblock %}
+{% block style %}<link rel="stylesheet" href="/static/big_product_style.css">{% endblock %}
+
+{% block content %}
+<body>
+    <div class="product-container">
+        <!-- Product Info Section (Left Side) -->
+        <div class="product-info">
+            <img src="/static/{{ product['image'] }}" alt="{{ product['name'] }}">
+            <h1>{{ product['name'] }}</h1>
+            <p><strong>Starting Price:</strong> ${{ product['start_price'] }}</p>
+            <p><strong>Current Price:</strong> $<span id="current-price">{{ product['current_price'] }}</span></p>
+            <button id="place-bid-button" onclick="placeBid()">Place Bid</button>
+            <button onclick="window.location.href='/product/{{ product.id }}'">Place Bid</button>
+        </div>
+
+        <!-- WebSocket Chat Section (Right Side) -->
+        <div class="chat-section">
+            <div id="chat-box">
+                <div id="chat-messages"></div>
+                <div id="chat-input">
+                    <input type="text" id="message-text" placeholder="Type a message..." />
+                    <button class="send-button" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const productId = {{ product['id'] }};
+        const socket = new WebSocket(`ws://localhost:8000/ws/${productId}`);
+
+        socket.onmessage = function(event) {
+            const message = event.data;
+            const chatMessages = document.getElementById("chat-messages");
+            chatMessages.innerHTML += `<p>${message}</p>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        };
+
+        function sendMessage() {
+            const message = document.getElementById("message-text").value;
+            if (message) {
+                socket.send(message);
+                document.getElementById("message-text").value = '';
+            }
+        }
+
+        document.getElementById("message-text").addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+
+        async function placeBid() {
+            // Send a request to update the price in the database
+            const currentPriceElement = document.getElementById("current-price");
+            let currentPrice = parseFloat(currentPriceElement.textContent);
+
+            // Increase the price by 100 (for example)
+            let newPrice = currentPrice + 100;
+
+            // Update the price in the UI
+            currentPriceElement.textContent = newPrice.toFixed(2);
+
+            // Send the updated price via WebSocket
+            socket.send(`Price updated: $${newPrice}`);
+
+            // Send the updated price to the backend (use an API call or similar to update the DB)
+            await fetch(`/update_price/${productId}/${newPrice}`, {
+                method: 'POST',
+            });
+        }
+    </script>
+</body>
+{% endblock %}

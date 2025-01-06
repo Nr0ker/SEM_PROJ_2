@@ -1,10 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Main</title>
-</head>
-<body>
+{% extends 'header.html' %}
+
+{% block title %}Main{% endblock %}
+{% block content %}
 {% if not user %}
 <p>
     Please <a href="/login">Log in</a> or <a href="/register-page">Sign up</a> to add products.
@@ -13,5 +10,4 @@
     <h1>Welcome, {{ user['username'] }}</h1>
 
 {% endif %}
-</body>
-</html>
+{% endblock %}
