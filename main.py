@@ -606,21 +606,139 @@ async def add_to_cart(user_id: int, product_id: int, db: Session = Depends(get_d
 
 # Show user's cart
 @app.get("/cart/{user_id}")
-async def view_cart(request:Request,user_id: int, db: Session = Depends(get_db)):
+async def view_cart(request: Request, user_id: int, db: Session = Depends(get_db)):
     # Get the user and their cart items
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Get all products in the user's cart
+    # Fetch all cart items with the associated products
     cart_items = db.query(Cart).filter(Cart.user_id == user_id).all()
+
+    # Add photo encoding for each product in the cart
+    for cart_item in cart_items:
+        product = cart_item.product  # Assuming Cart has a relationship to Product
+        if product.photo:
+            try:
+                product.photo = base64.b64encode(product.photo).decode("utf-8")
+            except Exception as e:
+                print(f"Error encoding product photo: {e}")
+                product.photo = None  # Handle errors appropriately
 
     # Calculate total price
     total_price = sum(cart_item.quantity * cart_item.product.curr_price for cart_item in cart_items)
 
-    return templates.TemplateResponse("cart.html", {"request": request, "user": user, "cart_items": cart_items, "total_price": total_price})
+    return templates.TemplateResponse("cart.html", {
+        "request": request,
+        "user": user,
+        "cart_items": cart_items,
+        "total_price": total_price,
+    })
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
+    user = get_current_user_from_token(access_token, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse("settings.html", {"request": request, "user": user})
 
 
+
+@app.post("/update_username")
+async def update_username(
+    old_username: str = Form(...),
+    new_username: str = Form(...),
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    user = get_current_user_from_token(access_token, db)
+    if not user or user.username != old_username:
+        raise HTTPException(status_code=400, detail="Invalid current username")
+
+    user.username = new_username
+    db.commit()
+    db.refresh(user)
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+
+@app.post("/update_email")
+async def update_email(
+    old_email: str = Form(...),
+    new_email: str = Form(...),
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    user = get_current_user_from_token(access_token, db)
+    if not user or user.email != old_email:
+        raise HTTPException(status_code=400, detail="Invalid current email")
+
+    user.email = new_email
+    db.commit()
+    db.refresh(user)
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+
+
+@app.post("/update_password")
+async def update_password(
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    user = get_current_user_from_token(access_token, db)
+    if not user or not verify_password(current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Invalid current password")
+
+    user.hashed_password = hash_password(new_password)
+    db.commit()
+    db.refresh(user)
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+
+@app.post("/update-settings")
+async def update_settings(
+    old_username: str = Form(...),
+    new_username: str = Form(None),
+    old_password: str = Form(...),
+    new_password: str = Form(None),
+    old_email: str = Form(...),
+    new_email: str = Form(None),
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    user = get_current_user_from_token(access_token, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # Verify old username and password
+    # if user.username == old_username or not pwd_context.verify(old_password, user.hashed_password):
+    #     raise HTTPException(status_code=400, detail="Invalid current username or password")
+
+    # Update username
+    if new_username:
+        if db.query(User).filter(User.username == new_username).first():
+            raise HTTPException(status_code=400, detail="Username already exists")
+        user.username = new_username
+
+    # Update password
+    if new_password:
+        user.hashed_password = pwd_context.hash(new_password)
+
+    # Update email
+    if new_email:
+        if db.query(User).filter(User.email == new_email).first():
+            raise HTTPException(status_code=400, detail="Email already in use")
+        user.email = new_email
+
+    # Commit changes to the database
+    db.commit()
+    db.refresh(user)
+
+    return RedirectResponse(url="/settings", status_code=303)
 
 @app.post("/update_price/{product_id}/{new_price}")
 async def update_price(product_id: int, new_price: float, db: Session = Depends(get_db)):
