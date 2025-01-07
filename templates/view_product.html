@@ -1,0 +1,28 @@
+    {% extends "header.html" %}
+    {% block title %}View Product - {{ product.name }}{% endblock %}
+    {% block style %}<link rel="stylesheet" href="/static/view_product.css">{% endblock %}
+    {% block content %}
+    <div class="container">
+        <h1>Product Details</h1>
+
+        <div class="product-detail">
+            <h2>{{ product.name }}</h2>
+
+            {% if product.photo %}
+                <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
+            {% else %}
+                <p>No image available</p>
+            {% endif %}
+
+
+            <p><strong>Description:</strong> {{ product.desc }}</p>
+            <p><strong>Price:</strong> ${{ product.curr_price }}</p>
+
+            <a href="/" class="back-button">Back to Products List</a>
+            <a href="/add_to_cart/{{ user.id }}/{{ product.id }}">
+                <button>Add to Cart</button>
+            </a>
+        </div>
+    </div>
+
+    {% endblock %}

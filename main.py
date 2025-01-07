@@ -1,7 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Form, Request, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from sqlite3 import Connection
-from fastapi import FastAPI, HTTPException, Depends, Form, Cookie
+from fastapi import FastAPI, HTTPException, Depends, Form, Cookie, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from datetime import datetime, timedelta, timezone
@@ -18,20 +16,28 @@ from fastapi.requests import Request
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from contextlib import asynccontextmanager
 # FastAPI app
-app = FastAPI()
+import base64
 
+app = FastAPI()
 
 # Set up templates and static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 ####### db functions ##############
-from db_file import init_db, Base, Bid, User, Product
+from db_file import init_db, Base, Bid, User, Product, Cart
 
 # Database connection
-DATABASE_URL = "sqlite:///./database.db"
-engine = create_engine(DATABASE_URL)
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# Create the engine with a pool size and connection timeout
+engine = create_engine(
+    "mysql+pymysql://root:@localhost/broject_db?charset=utf8mb4&connect_timeout=300&read_timeout=300&write_timeout=300",
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
 init_db()
 auction_chats = {}
 def get_db():
@@ -42,7 +48,6 @@ def get_db():
         db.close()
 
 ####### authorization functions ##############
-
 # Configurations
 SECRET_KEY = 'qwertyy1556'
 ALGORITHM = 'HS256'
@@ -71,6 +76,7 @@ def get_password_hash(password):
 
 def get_current_user_from_token(token: Optional[str], db: Session):
     if not token:
+        print('No token')
         return None
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -185,36 +191,79 @@ async def logout(response: Response):
     return response
 
 @app.get("/profile", response_class=HTMLResponse)
-async def read_root(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
+async def profile(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
     user = get_current_user_from_token(access_token, db)
-    if user:
-        return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": None})
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("profile.html", {"request": request, "user": user})
 
 @app.get("/index", response_class=HTMLResponse)
-async def read_root(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
+async def index(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
     user = get_current_user_from_token(access_token, db)
-    if user:
-        return templates.TemplateResponse("index.html", {"request": request, "user": user})
-    return templates.TemplateResponse("index.html", {"request": request, "user": None})
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request, "user": user})
 
 
-@app.get('/header', response_class=HTMLResponse)
-async def header(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
-    user = get_current_user_from_token(access_token, db)
-    return templates.TemplateResponse("header.html", {"request": request, "user": user})
+# @app.get('', response_class=HTMLResponse)
+# async def header(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
+#     user = get_current_user_from_token(access_token, db)
+#     return templates.TemplateResponse("header.html", {"request": request, "user": user})
 
-
+from fastapi.responses import StreamingResponse
+from io import BytesIO
 @app.get("/register-page", response_class=HTMLResponse)
 async def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
 
+
+@app.get("/product_image/{product_id}")
+async def get_product_image(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+
+    if not product or not product.photo:
+        raise HTTPException(status_code=404, detail="Product or image not found")
+
+    # Convert the binary photo to a stream
+    image_stream = BytesIO(product.photo)
+
+    # Assuming the image is in JPEG format; adjust the content type if needed
+    return StreamingResponse(image_stream, media_type="image/jpeg")
+
+import base64
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
     user = get_current_user_from_token(access_token, db)
-    if user:
-        return templates.TemplateResponse("main.html", {"request": request, "user": user})
-    return templates.TemplateResponse("login.html", {"request": request, "user": None})
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request})
+
+    # Get products and categorize them
+    big_products = db.query(Product).filter(Product.category == "big").all()
+    small_products = db.query(Product).filter(Product.category == "small").all()
+
+    # Categorize products and handle photo encoding
+    for product in big_products + small_products:
+        if product.curr_price and product.curr_price >= 1000:
+            product.category = "big"
+        else:
+            product.category = "small"
+
+        # Encode photo to Base64 for rendering in HTML
+        if product.photo:
+            try:
+                product.photo = base64.b64encode(product.photo).decode("utf-8")
+            except Exception as e:
+                print(f"Error encoding product photo: {e}")
+                product.photo = None  # Handle errors appropriately
+
+    return templates.TemplateResponse("main.html", {
+        "request": request,
+        "user": user,
+        "big_products": big_products,
+        "small_products": small_products
+    })
+
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -248,6 +297,468 @@ async def broadcast_message(auction_id: int, message: str):
             await connection.send_text(message)
         except:
             pass
+
+@app.get("/add_product-page", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("add_product.html", {"request": request})
+
+
+
+# CRUD FOR PRODUCTS
+from fastapi import File
+
+# READ
+
+
+@app.get("/read_products", response_class=HTMLResponse)
+async def read_products(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
+    user = get_current_user_from_token(access_token, db)
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request})
+
+    try:
+        products = db.query(Product).filter(Product.user_id_attached == user.id).all()
+
+        # No need to encode photo to Base64, just pass the binary data directly
+        for product in products:
+            if product.photo:
+                try:
+                    product.photo = base64.b64encode(product.photo).decode("utf-8")
+                except Exception as e:
+                    print(f"Error encoding product photo: {e}")
+                    product.photo = None  # Handle errors appropriately
+
+        return templates.TemplateResponse("read_products.html", {
+            "request": request,
+            "products": products
+        })
+    except Exception as e:
+        print(e)
+        return templates.TemplateResponse("read_products.html", {
+            "request": request,
+            "error": f"Error: {str(e)}"
+        })
+
+
+# get product with it`s id
+@app.get("/product/{product_id}", response_class=HTMLResponse)
+async def view_product(product_id: int, request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
+    # Get user from token (if exists)
+    user = get_current_user_from_token(access_token, db)
+
+    # Check if user is authenticated
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request})
+
+    # try:
+        # Fetch product based on the product_id
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        return templates.TemplateResponse("main.html", {"request": request})  # Handle product not found
+
+    # Encode the product's photo to base64
+    if product.photo:
+        try:
+            product.photo = base64.b64encode(product.photo).decode("utf-8")
+        except Exception as e:
+            print(f"Error encoding product photo: {e}")
+            product.photo = None  # Handle errors appropriately
+
+    # Return the view product page with user and product data
+    return templates.TemplateResponse("view_product.html", {
+        "request": request,
+        "product": product,
+        "user": user  # Ensure that user is passed to the template
+    })
+
+    # except Exception as e:
+    #     print(e)
+    #     return templates.TemplateResponse("read_products.html", {
+    #         "request": request,
+    #         "error": f"Error: {str(e)}"
+    #     })
+
+
+from PIL import Image
+import io
+
+# ADD
+@app.post('/add_product', response_class=HTMLResponse)
+async def add_product(request: Request,
+                      name: str = Form(...),
+                      desc: str = Form(...),
+                      start_price: str = Form(...),
+                      photo: Optional[UploadFile] = File(None),
+                      access_token: Optional[str] = Cookie(None),
+                      db: Session = Depends(get_db)):
+    user = get_current_user_from_token(access_token, db)
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request})
+
+    try:
+        # Handle photo, if provided (store as raw binary data)
+        photo_data = None
+        if photo:
+            photo_data = await photo.read()  # Read the photo as raw bytes
+
+        # Default category is None; will update based on price
+        category = "small" if float(start_price) < 1000 else "big"
+
+        if photo_data:
+            # Compress the image
+            img = Image.open(io.BytesIO(photo_data))  # Use photo_data here
+            img = img.convert('RGB')  # Convert image to RGB (JPG compatible)
+
+            # Resize the image to a smaller size (optional)
+            img.thumbnail((1024, 1024))  # Resize to max 1024x1024
+
+            # Save the image into a buffer with a specific quality
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format='JPEG', quality=85)  # You can adjust quality here
+            compressed_image_data = img_byte_arr.getvalue()
+        else:
+            compressed_image_data = None  # If no photo, set it to None
+
+        # Create the new product object
+        new_product = Product(
+            name=name,
+            desc=desc,
+            start_price=float(start_price),
+            curr_price=float(start_price),
+            photo=compressed_image_data,  # Store the compressed image data as binary
+            user_id_attached=user.id,
+            category=category
+        )
+
+        # Add the product to the database and commit
+        db.add(new_product)
+        db.commit()
+        db.refresh(new_product)
+
+        return RedirectResponse(url="/", status_code=303)
+
+    except Exception as e:
+        print(e)
+        return templates.TemplateResponse("add_product.html", {
+            "request": request,
+            "error": f"Error: {str(e)}"
+        })
+
+
+# UPDATE
+
+@app.get('/search_product_update', response_class=HTMLResponse)
+async def search_product_update_page(request: Request):
+    return templates.TemplateResponse("search_product_update.html", {"request": request})
+
+
+@app.post('/search_product_update', response_class=HTMLResponse)
+async def search_product_update(request: Request,
+                                product_name: str = Form(...),
+                                db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.name == product_name).first()
+    if product:
+        return RedirectResponse(url=f"/update_product-page/{product.name}", status_code=303)
+    return templates.TemplateResponse("search_product_update.html", {
+        "request": request,
+        "error": "No product found with the provided name."
+    })
+
+@app.get('/update_product-page/{product_name}', response_class=HTMLResponse)
+async def update_product_page(request: Request, product_name: str, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.name == product_name).first()
+    if product:
+        return templates.TemplateResponse("update_product.html", {"request": request, "product": product})
+    return templates.TemplateResponse("update_product.html", {"request": request, "error": "Product not found."})
+
+
+@app.post('/update_product', response_class=HTMLResponse)
+async def update_product(request: Request,
+                         name: str = Form(...),
+                         desc: str = Form(...),
+                         start_price: str = Form(...),
+                         photo: Optional[UploadFile] = File(None),
+                         access_token: Optional[str] = Cookie(None),
+                         db: Session = Depends(get_db)):
+    user = get_current_user_from_token(access_token, db)
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request})
+
+    try:
+        # Fetch the product by name and ensure it belongs to the user
+        product = db.query(Product).filter(Product.name == name, Product.user_id_attached == user.id).first()
+        if not product:
+            return templates.TemplateResponse("update_product.html", {
+                "request": request,
+                "error": "Product not found."
+            })
+
+        # Update the product details
+        product.desc = desc
+        product.start_price = start_price
+
+        # Handle the photo: Only update if a new photo is provided
+        if photo is not None and photo.filename:  # Ensure a new photo is uploaded
+            product.photo = await photo.read()
+
+        db.commit()
+        db.refresh(product)
+
+        return RedirectResponse(url="/read_products", status_code=303)
+
+    except Exception as e:
+        print(e)
+        return templates.TemplateResponse("update_product.html", {
+            "request": request,
+            "error": f"Error: {str(e)}"
+        })
+
+
+
+
+
+# DELETE
+
+@app.get('/search_product_delete', response_class=HTMLResponse)
+async def search_product_delete_page(request: Request):
+    return templates.TemplateResponse("search_product_delete.html", {"request": request})
+
+
+@app.post('/search_product_delete', response_class=HTMLResponse)
+async def search_product_delete(request: Request,
+                                product_name: str = Form(...),
+                                db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.name == product_name).first()
+    if product:
+        return RedirectResponse(url=f"/delete_product-page/{product.name}", status_code=303)
+    return templates.TemplateResponse("search_product_delete.html", {
+        "request": request,
+        "error": "No product found with the provided name."
+    })
+
+
+@app.get('/delete_product-page/{product_name}', response_class=HTMLResponse)
+async def delete_product_page(request: Request, product_name: str, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.name == product_name).first()
+    if product:
+        return templates.TemplateResponse("delete_product.html", {"request": request, "product": product})
+    return templates.TemplateResponse("delete_product.html", {"request": request, "error": "Product not found."})
+
+
+@app.post('/delete_product/{product_name}', response_class=HTMLResponse)
+async def delete_product(request: Request,
+                         product_name: str,
+                         access_token: Optional[str] = Cookie(None),
+                         db: Session = Depends(get_db)):
+    user = get_current_user_from_token(access_token, db)
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request})
+
+    try:
+        product = db.query(Product).filter(Product.name == product_name, Product.user_id_attached == user.id).first()
+        if not product:
+            return templates.TemplateResponse("delete_product.html", {
+                "request": request,
+                "error": "Product not found."
+            })
+
+        db.delete(product)
+        db.commit()
+        return RedirectResponse(url="/read_products", status_code=303)
+
+    except Exception as e:
+        print(e)
+        return templates.TemplateResponse("delete_product.html", {
+            "request": request,
+            "error": f"Error: {str(e)}"
+        })
+
+
+
+###################### USER SIDE -> PROFILE, CART ETC
+@app.get("/add_to_cart/{user_id}/{product_id}", response_class=HTMLResponse)
+async def add_to_cart(user_id: int, product_id: int, db: Session = Depends(get_db)):
+    # Check if user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check if product exists
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # Check if the product is already in the user's cart
+    cart_item = db.query(Cart).filter(Cart.user_id == user_id, Cart.product_id == product_id).first()
+
+    if cart_item:
+        # If the product is already in the cart, increase the quantity by 1
+        cart_item.quantity += 1
+    else:
+        # Otherwise, create a new cart item
+        cart_item = Cart(user_id=user_id, product_id=product_id, quantity=1)
+        db.add(cart_item)
+
+    # Commit the transaction
+    db.commit()
+    return RedirectResponse(url=f"/cart/{user_id}", status_code=303)
+
+
+# Show user's cart
+@app.get("/cart/{user_id}")
+async def view_cart(request: Request, user_id: int, db: Session = Depends(get_db)):
+    # Get the user and their cart items
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Fetch all cart items with the associated products
+    cart_items = db.query(Cart).filter(Cart.user_id == user_id).all()
+
+    # Add photo encoding for each product in the cart
+    for cart_item in cart_items:
+        product = cart_item.product  # Assuming Cart has a relationship to Product
+        if product.photo:
+            try:
+                product.photo = base64.b64encode(product.photo).decode("utf-8")
+            except Exception as e:
+                print(f"Error encoding product photo: {e}")
+                product.photo = None  # Handle errors appropriately
+
+    # Calculate total price
+    total_price = sum(cart_item.quantity * cart_item.product.curr_price for cart_item in cart_items)
+
+    return templates.TemplateResponse("cart.html", {
+        "request": request,
+        "user": user,
+        "cart_items": cart_items,
+        "total_price": total_price,
+    })
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
+    user = get_current_user_from_token(access_token, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse("settings.html", {"request": request, "user": user})
+
+
+
+@app.post("/update_username")
+async def update_username(
+    old_username: str = Form(...),
+    new_username: str = Form(...),
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    user = get_current_user_from_token(access_token, db)
+    if not user or user.username != old_username:
+        raise HTTPException(status_code=400, detail="Invalid current username")
+
+    user.username = new_username
+    db.commit()
+    db.refresh(user)
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+
+@app.post("/update_email")
+async def update_email(
+    old_email: str = Form(...),
+    new_email: str = Form(...),
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    user = get_current_user_from_token(access_token, db)
+    if not user or user.email != old_email:
+        raise HTTPException(status_code=400, detail="Invalid current email")
+
+    user.email = new_email
+    db.commit()
+    db.refresh(user)
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+
+
+@app.post("/update_password")
+async def update_password(
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    user = get_current_user_from_token(access_token, db)
+    if not user or not verify_password(current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Invalid current password")
+
+    user.hashed_password = hash_password(new_password)
+    db.commit()
+    db.refresh(user)
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+
+@app.post("/update-settings")
+async def update_settings(
+    old_username: str = Form(...),
+    new_username: str = Form(None),
+    old_password: str = Form(...),
+    new_password: str = Form(None),
+    old_email: str = Form(...),
+    new_email: str = Form(None),
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    user = get_current_user_from_token(access_token, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # Verify old username and password
+    # if user.username == old_username or not pwd_context.verify(old_password, user.hashed_password):
+    #     raise HTTPException(status_code=400, detail="Invalid current username or password")
+
+    # Update username
+    if new_username:
+        if db.query(User).filter(User.username == new_username).first():
+            raise HTTPException(status_code=400, detail="Username already exists")
+        user.username = new_username
+
+    # Update password
+    if new_password:
+        user.hashed_password = pwd_context.hash(new_password)
+
+    # Update email
+    if new_email:
+        if db.query(User).filter(User.email == new_email).first():
+            raise HTTPException(status_code=400, detail="Email already in use")
+        user.email = new_email
+
+    # Commit changes to the database
+    db.commit()
+    db.refresh(user)
+
+    return RedirectResponse(url="/settings", status_code=303)
+
+@app.post("/update_price/{product_id}/{new_price}")
+async def update_price(product_id: int, new_price: float, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if product:
+        product.current_price = new_price
+        db.commit()
+        db.refresh(product)
+        return {"message": "Price updated successfully"}
+    return {"message": "Product not found"}
+
+
+
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
     import uvicorn

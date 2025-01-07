@@ -1,0 +1,23 @@
+{% extends "header.html" %}
+{% block title %}Your Cart{% endblock %}
+{% block content %}
+    <h1>Your Cart</h1>
+    <h2>Welcome, {{ user.username }}!</h2>
+
+    <ul>
+    {% for cart_item in cart_items %}
+        <li>
+            <img src="data:image/jpeg;base64,{{ cart_item.product.photo }}" alt="{{ cart_item.product.name }}" width="100px">
+            <p>{{ cart_item.product.name }}</p>
+            <p>Quantity: {{ cart_item.quantity }}</p>
+            <p>Price: ${{ cart_item.product.curr_price }}</p>
+            <p>Total: ${{ total_price }}</p>
+        </li>
+    {% endfor %}
+    </ul>
+
+    <h3>Total Price: ${{ total_price }}</h3>
+
+    <!-- Optionally add buttons to proceed to checkout or remove items from cart -->
+    <button>Proceed to Checkout</button>
+{% endblock %}
