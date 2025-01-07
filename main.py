@@ -757,9 +757,6 @@ async def update_price(product_id: int, new_price: float, db: Session = Depends(
 
 
 
-
-
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
