@@ -4,13 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Main</title>
+    <style>
+        .admin-logout-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .admin-logout-btn:hover {
+            background-color: #e53935;
+        }
+    </style>
 </head>
 <body>
     <h1>Welcome to auction</h1>
+
+    {% if role == 'admin' %}
+    <form action="/reset_role" method="POST">
+        <button type="submit" class="admin-logout-btn">leave admin role <button>
+    </form>
+    {% endif %}
+
     <p id="admin-status">
         Role: <strong>{{ role }}</strong>
     </p>
     <button onclick="window.location.href='/static/auction_chat.html'">Go to chat</button>
-    <button onclick="window.location.href='/get_admin_role'">Enter Admin Code</button>
 </body>
 </html>

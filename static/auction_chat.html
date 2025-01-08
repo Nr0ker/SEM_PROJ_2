@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auction Chat</title>
     <style>
-
+        /* Стилі для чату */
         #chat-box {
             position: fixed;
             bottom: 0;
@@ -18,7 +18,7 @@
             padding: 10px;
             display: flex;
             flex-direction: column;
-            z-index: 1000; /* Щоб чат був поверх інших елементів */
+            z-index: 1000;
         }
 
         #chat-messages {
@@ -57,6 +57,73 @@
         .send-button:hover {
             background-color: #45a049;
         }
+
+        /* Стилі для кнопки адмін-панелі */
+        #admin-panel-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 1100;
+        }
+
+        #admin-panel-button.hidden {
+            display: none; /* Кнопка прихована за замовчуванням */
+        }
+
+        #admin-panel-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Стилі модального вікна */
+        #adminModal {
+            display: none; /* Спочатку приховано */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1200;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h1 {
+            font-size: 20px;
+            margin: 0 0 10px;
+        }
+
+        .modal-content input, .modal-content select, .modal-content button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 8px;
+        }
+
+        .close-modal {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -71,32 +138,109 @@
         </div>
     </div>
 
-    <script>
-        const auction_id = 1;
-        const socket = new WebSocket(`ws://localhost:8000/ws/${auction_id}`);
+    <!-- Кнопка для відкриття адмін панелі -->
+    <button id="admin-panel-button" class="hidden" onclick="openAdminPanel()">Admin Panel</button>
 
+    <!-- Модальне вікно -->
+    <div id="adminModal">
+        <div class="modal-content">
+            <h1>Admin Panel</h1>
+            <form id="adminForm">
+                <label for="user_id">User ID:</label>
+                <input type="text" id="user_id" name="user_id" required>
+
+                <label for="action_type">Action Type:</label>
+                <select id="action_type" name="action_type" required>
+                    <option value="ban">Ban</option>
+                    <option value="mute">Mute</option>
+                    <option value="warning">Warning</option>
+                </select>
+
+                <label for="reason">Reason:</label>
+                <input type="text" id="reason" name="reason" required>
+
+                <div id="durationContainer" style="display: none;">
+                    <label for="duration">Duration (minutes):</label>
+                    <input type="number" id="duration" name="duration" min="1" step="1">
+                </div>
+
+                <button type="submit">Apply Action</button>
+            </form>
+            <button class="close-modal">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Перевірка ролі користувача
+        async function checkUserRole() {
+            const response = await fetch("/get_role");
+            const data = await response.json();
+            console.log(data); // Перевірка відповіді сервера
+            if (data.role === "admin") {
+                document.getElementById("admin-panel-button").classList.remove("hidden");
+            } else {
+                document.getElementById("admin-panel-button").classList.add("hidden");
+            }
+        }
+
+        // Виклик функції для перевірки ролі користувача
+        checkUserRole();
+
+        // Підключення до WebSocket сервера
+        const socket = new WebSocket('ws://localhost:8000/ws/chat');
+
+        socket.onopen = function() {
+            console.log("Connected to WebSocket server.");
+        };
 
         socket.onmessage = function(event) {
             const message = event.data;
             const chatMessages = document.getElementById("chat-messages");
             chatMessages.innerHTML += `<p>${message}</p>`;
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Прокрутка вниз
         };
 
-
+        // Відправка повідомлення
         function sendMessage() {
             const message = document.getElementById("message-text").value;
             if (message) {
-                socket.send(message);
-                document.getElementById("message-text").value = '';
+                socket.send(message); // Відправка через WebSocket
+                document.getElementById("message-text").value = ''; // Очистити поле введення
             }
         }
 
+        // Відкриття адмін-панелі
+        function openAdminPanel() {
+            document.getElementById("adminModal").style.display = 'block';
+        }
 
-        document.getElementById("message-text").addEventListener("keydown", function(event) {
-            if (event.key === "Enter") {
-                sendMessage();
-            }
+        // Закриття модального вікна
+        document.querySelector('.close-modal').addEventListener('click', function() {
+            document.getElementById("adminModal").style.display = 'none';
+        });
+
+        // Обробка зміни вибору типу дії в адмін-панелі
+        document.getElementById('action_type').addEventListener('change', function() {
+            const actionType = this.value;
+            const durationContainer = document.getElementById('durationContainer');
+            durationContainer.style.display = actionType === 'mute' || actionType === 'ban' ? 'block' : 'none';
+        });
+
+        // Обробка відправки форми адмін панелі
+        document.getElementById('adminForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch('/admin_panel_action', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message || "Action applied successfully");
+                document.getElementById("adminModal").style.display = 'none';
+            })
+            .catch(error => console.error('Error:', error));
         });
     </script>
 </body>
