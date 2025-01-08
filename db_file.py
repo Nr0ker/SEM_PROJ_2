@@ -1,3 +1,4 @@
+import pytz
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, DateTime
 from sqlalchemy.dialects.mysql import LONGBLOB
 from sqlalchemy.orm import relationship, declarative_base
@@ -6,6 +7,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
+from datetime import datetime, timezone
+
 Base = declarative_base()
 
 # User table model
@@ -22,8 +25,12 @@ class User(Base):
     role = Column(String(50), nullable=False, default="user")
     disabled = Column(Boolean, default=False)
 
-    # Relationships (use forward references)
-    products = relationship("Product", back_populates="owner")
+    # Relationships
+    products = relationship(
+        "Product",
+        back_populates="owner",
+        foreign_keys="Product.user_id_attached",  # Specify foreign key for ownership
+    )
     bids = relationship("Bid", back_populates="user")
     cart_items = relationship("Cart", back_populates="user")
 
@@ -41,6 +48,19 @@ class Cart(Base):
     user = relationship("User", back_populates="cart_items")
     product = relationship("Product")
 
+class HistoryOfChanges(Base):
+    __tablename__ = "history_of_changes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    attached_product_id = Column(Integer, ForeignKey("products.id"))
+    new_price = Column(Float, nullable=False)
+    timestamp = datetime.now(pytz.utc).replace(microsecond=0)  # UTC time without microseconds
+
+    product = relationship(
+        "Product",
+        back_populates="history"
+    )
+
 
 # Product class
 class Product(Base):
@@ -51,6 +71,7 @@ class Product(Base):
     desc = Column(String(1000), nullable=False)
     start_price = Column(Float, nullable=False)
     curr_price = Column(Float)
+    highest_bidder_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     is_sailed = Column(Boolean, default=False)
     in_stock = Column(Boolean, default=False)
     photo = Column(LONGBLOB)  # LONGBLOB for large images
@@ -58,11 +79,24 @@ class Product(Base):
     category = Column(String(50), nullable=True)  # "big" or "small"
 
     # Relationships
-    owner = relationship("User", back_populates="products")
+    owner = relationship(
+        "User",
+        back_populates="products",
+        foreign_keys=[user_id_attached],  # Specify foreign key for ownership
+    )
+    highest_bidder = relationship(
+        "User",
+        foreign_keys=[highest_bidder_id],  # Specify foreign key for highest bidder
+    )
     bids = relationship("Bid", back_populates="product")
+    history = relationship(
+        "HistoryOfChanges",
+        back_populates="product",
+        foreign_keys=[HistoryOfChanges.attached_product_id]
+    )
 
 
-# Bid class
+
 class Bid(Base):
     __tablename__ = "bids"
 

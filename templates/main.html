@@ -7,7 +7,15 @@
 
     <h1>Welcome</h1>
     <h2>Check out our amazing products</h2>
-
+    {% if messages %}
+    <div class="notification">
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
     <!-- Big products section -->
     <h2 class="section-title">Big Products</h2>
     <div class="big-products-container">
@@ -45,7 +53,5 @@
             </div>
         {% endfor %}
     </div>
-
 </div>
-
 {% endblock %}

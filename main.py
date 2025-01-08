@@ -25,7 +25,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 ####### db functions ##############
-from db_file import init_db, Base, Bid, User, Product, Cart
+from db_file import init_db, Base, Bid, User, Product, Cart, HistoryOfChanges
 
 # Database connection
 from sqlalchemy import create_engine
@@ -231,7 +231,7 @@ async def get_product_image(product_id: int, db: Session = Depends(get_db)):
     return StreamingResponse(image_stream, media_type="image/jpeg")
 
 import base64
-
+# render main_page
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
     user = get_current_user_from_token(access_token, db)
@@ -268,35 +268,101 @@ async def read_root(request: Request, access_token: Optional[str] = Cookie(None)
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
+# websocket
 
-# Додаткові функції
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("Сервер стартує...")
-    yield
-    print("Сервер завершує роботу...")
+from typing import List
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            await connection.send_json(message)
+
+manager = ConnectionManager()
 
 
-# Відправка повідомлень для аукціону
-@app.websocket("/ws/{auction_id}")
-async def websocket_endpoint(websocket: WebSocket, auction_id: int):
-    await websocket.accept()
-    auction_chats.setdefault(auction_id, []).append(websocket)
+@app.websocket("/ws/{product_id}")
+async def websocket_endpoint(websocket: WebSocket, product_id: int, db: Session = Depends(get_db)):
+    await manager.connect(websocket)
     try:
         while True:
-            message = await websocket.receive_text()
-            await broadcast_message(auction_id, message)
-    except WebSocketDisconnect:
-        auction_chats[auction_id].remove(websocket)
-        if not auction_chats[auction_id]:
-            del auction_chats[auction_id]
+            data = await websocket.receive_json()
 
-async def broadcast_message(auction_id: int, message: str):
-    for connection in auction_chats.get(auction_id, []):
-        try:
-            await connection.send_text(message)
-        except:
-            pass
+            # Extract details from incoming data
+            new_price = data.get("newPrice")
+            timestamp = data.get("timestamp")
+
+            # Update the product price in the database
+            product = db.query(Product).filter(Product.id == product_id).first()
+            if product:
+                product.curr_price = new_price  # Update the current price in the database
+                db.commit()
+
+                # Record the price change in the history table
+                history_entry = HistoryOfChanges(
+                    attached_product_id=product_id,
+                    new_price=new_price,
+                    timestamp=timestamp
+                )
+                db.add(history_entry)
+                db.commit()
+
+                # Broadcast the new update to all connected clients
+                await manager.broadcast({
+                    "productId": product_id,
+                    "newPrice": new_price,
+                    "timestamp": timestamp
+                })
+            else:
+                # Handle the case where the product is not found
+                await websocket.send_json({
+                    "error": "Product not found"
+                })
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+
+
+
+
+
+
+# Додаткові функції
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     print("Сервер стартує...")
+#     yield
+#     print("Сервер завершує роботу...")
+#
+#
+# # Відправка повідомлень для аукціону
+# @app.websocket("/ws/{auction_id}")
+# async def websocket_endpoint(websocket: WebSocket, auction_id: int):
+#     await websocket.accept()
+#     auction_chats.setdefault(auction_id, []).append(websocket)
+#     try:
+#         while True:
+#             message = await websocket.receive_text()
+#             await broadcast_message(auction_id, message)
+#     except WebSocketDisconnect:
+#         auction_chats[auction_id].remove(websocket)
+#         if not auction_chats[auction_id]:
+#             del auction_chats[auction_id]
+#
+# async def broadcast_message(auction_id: int, message: str):
+#     for connection in auction_chats.get(auction_id, []):
+#         try:
+#             await connection.send_text(message)
+#         except:
+#             pass
 
 @app.get("/add_product-page", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -341,42 +407,32 @@ async def read_products(request: Request, access_token: Optional[str] = Cookie(N
 
 
 # get product with it`s id
+
+def format_date(timestamp):
+    return datetime.fromisoformat(timestamp).strftime('%d/%m/%Y')
 @app.get("/product/{product_id}", response_class=HTMLResponse)
 async def view_product(product_id: int, request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
-    # Get user from token (if exists)
+    # Get user from token
     user = get_current_user_from_token(access_token, db)
-
-    # Check if user is authenticated
     if not user:
         return templates.TemplateResponse("login.html", {"request": request})
 
-    # try:
-        # Fetch product based on the product_id
+    # Fetch product
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        return templates.TemplateResponse("main.html", {"request": request})  # Handle product not found
+        return templates.TemplateResponse("main.html", {"request": request})  # Product not found
 
-    # Encode the product's photo to base64
-    if product.photo:
-        try:
-            product.photo = base64.b64encode(product.photo).decode("utf-8")
-        except Exception as e:
-            print(f"Error encoding product photo: {e}")
-            product.photo = None  # Handle errors appropriately
+    # Fetch price change history
+    product_history = db.query(HistoryOfChanges).filter(HistoryOfChanges.attached_product_id == product_id).all()
 
-    # Return the view product page with user and product data
+    # Return the view product page
     return templates.TemplateResponse("view_product.html", {
         "request": request,
         "product": product,
-        "user": user  # Ensure that user is passed to the template
+        "user": user,
+        "price_updates": product_history  # Pass history to the template
     })
 
-    # except Exception as e:
-    #     print(e)
-    #     return templates.TemplateResponse("read_products.html", {
-    #         "request": request,
-    #         "error": f"Error: {str(e)}"
-    #     })
 
 
 from PIL import Image
@@ -740,15 +796,17 @@ async def update_settings(
 
     return RedirectResponse(url="/settings", status_code=303)
 
-@app.post("/update_price/{product_id}/{new_price}")
-async def update_price(product_id: int, new_price: float, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
-    if product:
-        product.current_price = new_price
-        db.commit()
-        db.refresh(product)
-        return {"message": "Price updated successfully"}
-    return {"message": "Product not found"}
+# @app.post("/update_price/{product_id}/{new_price}")
+# async def update_price(product_id: int, new_price: float, db: Session = Depends(get_db)):
+#     product = db.query(Product).filter(Product.id == product_id).first()
+#     if product:
+#         product.current_price = new_price
+#         db.commit()
+#         db.refresh(product)
+#         return {"message": "Price updated successfully"}
+#     return {"message": "Product not found"}
+
+
 
 
 
