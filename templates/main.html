@@ -1,39 +1,57 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Main</title>
-    <style>
-        .admin-logout-btn {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 10px;
-            background-color: #f44336;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-        }
+{% extends "header.html" %}
+{% block title %}Product Page{% endblock %}
+{% block style %}<link rel="stylesheet" href="/static/main_style.css">{% endblock %}
+{% block content %}
 
-        .admin-logout-btn:hover {
-            background-color: #e53935;
-        }
-    </style>
-</head>
-<body>
-    <h1>Welcome to auction</h1>
+<div class="container">
 
-    {% if role == 'admin' %}
-    <form action="/reset_role" method="POST">
-        <button type="submit" class="admin-logout-btn">leave admin role <button>
-    </form>
+    <h1>Welcome</h1>
+    <h2>Check out our amazing products</h2>
+    {% if messages %}
+    <div class="notification">
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    </div>
     {% endif %}
+    <!-- Big products section -->
+    <h2 class="section-title">Big Products</h2>
+    <div class="big-products-container">
+        {% for product in big_products %}
+            <div class="big-product">
+                {% if product.photo %}
+                <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
+                {% else %}
+                <p>No image available</p>
+                {% endif %}
+                <div class="big-product-text">
+                    <h3>{{ product.name }}</h3>
+                    <p>{{ product.desc }}</p>
+                    <p>Price: ${{ product.curr_price }}</p>
+                    <a href="/product/{{ product.id }}" class="product-button">View Product</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
 
-    <p id="admin-status">
-        Role: <strong>{{ role }}</strong>
-    </p>
-    <button onclick="window.location.href='/static/auction_chat.html'">Go to chat</button>
-</body>
-</html>
+    <!-- Small products section -->
+    <h2 class="section-title">Small Products</h2>
+    <div class="small-products-container">
+        {% for product in small_products %}
+            <div class="small-product">
+                {% if product.photo %}
+                <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
+                {% else %}
+                <p>No image available</p>
+                {% endif %}
+                <h4>{{ product.name }}</h4>
+                <p>{{ product.desc }}</p>
+                <p>Price: ${{ product.curr_price }}</p>
+                <a href="/product/{{ product.id }}" class="product-button">View Product</a>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
