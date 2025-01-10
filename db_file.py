@@ -1,5 +1,6 @@
 import sqlite3
 from passlib.context import CryptContext
+from datetime import datetime
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 # user db
@@ -74,6 +75,7 @@ def get_sanctions_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_sanctions_db():
     conn = get_sanctions_db()
     cursor = conn.cursor()
@@ -82,11 +84,11 @@ def init_sanctions_db():
     CREATE TABLE IF NOT EXISTS user_sanctions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
-        ban_type TEXT,  
+        ban_type TEXT,
         reason TEXT,
         ban_start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         ban_end_time TIMESTAMP,
-        mute_duration INTEGER,  
+        mute_duration INTEGER,
         warning_count INTEGER DEFAULT 0,
         is_active BOOLEAN DEFAULT TRUE,
         FOREIGN KEY (user_id) REFERENCES users(id)
@@ -95,6 +97,45 @@ def init_sanctions_db():
 
     conn.commit()
     conn.close()
+
+
+def get_user_sanctions(user_id):
+    conn = get_sanctions_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM user_sanctions WHERE user_id = ?", (user_id,))
+    sanctions = cursor.fetchall()
+    conn.close()
+    return sanctions
+
+
+def add_sanction(user_id, ban_type, reason, mute_duration=None, ban_end_time=None):
+    conn = get_sanctions_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+    INSERT INTO user_sanctions (user_id, ban_type, reason, mute_duration, ban_end_time)
+    VALUES (?, ?, ?, ?, ?)
+    ''', (user_id, ban_type, reason, mute_duration, ban_end_time))
+    conn.commit()
+    conn.close()
+
+
+def update_sanction_status(sanction_id, is_active):
+    conn = get_sanctions_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+    UPDATE user_sanctions SET is_active = ? WHERE id = ?
+    ''', (is_active, sanction_id))
+    conn.commit()
+    conn.close()
+
+
+def is_user_banned(user_id):
+    sanctions = get_user_sanctions(user_id)
+    for sanction in sanctions:
+        if sanction['is_active'] and sanction['ban_type'] == 'ban':
+            return True
+    return False
+
 
 
 init_sanctions_db()
