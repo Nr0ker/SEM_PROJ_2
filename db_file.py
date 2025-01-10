@@ -1,6 +1,5 @@
 import sqlite3
 from passlib.context import CryptContext
-from datetime import datetime
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 # user db
@@ -9,6 +8,8 @@ def get_user_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+class User(Base):
+    __tablename__ = "users"
 
 def init_user_db():
     conn = get_user_db()
@@ -22,6 +23,10 @@ def init_user_db():
         )
     ''')
 
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    quantity = Column(Integer, default=1)  # Quantity of the product in the cart
 
 # product db
 def get_product_db():
@@ -29,6 +34,8 @@ def get_product_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+class HistoryOfChanges(Base):
+    __tablename__ = "history_of_changes"
 
 def init_product_db():
     conn = get_product_db()
@@ -51,6 +58,17 @@ def get_bids_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    desc = Column(String(1000), nullable=False)
+    start_price = Column(Float, nullable=False)
+    curr_price = Column(Float)
+    highest_bidder_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    is_sailed = Column(Boolean, default=False)
+    in_stock = Column(Boolean, default=False)
+    photo = Column(LONGBLOB)  # LONGBLOB for large images
+    user_id_attached = Column(Integer, ForeignKey('users.id'))
+    category = Column(String(50), nullable=True)  # "big" or "small"
 
 def init_bids_db():
     conn = get_bids_db()
@@ -70,75 +88,6 @@ def init_bids_db():
     print('1')
 
 
-def get_sanctions_db():
-    conn = sqlite3.connect("blocked_users.db")
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_sanctions_db():
-    conn = get_sanctions_db()
-    cursor = conn.cursor()
-
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS user_sanctions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        ban_type TEXT,
-        reason TEXT,
-        ban_start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        ban_end_time TIMESTAMP,
-        mute_duration INTEGER,
-        warning_count INTEGER DEFAULT 0,
-        is_active BOOLEAN DEFAULT TRUE,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-    ''')
-
-    conn.commit()
-    conn.close()
-
-
-def get_user_sanctions(user_id):
-    conn = get_sanctions_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM user_sanctions WHERE user_id = ?", (user_id,))
-    sanctions = cursor.fetchall()
-    conn.close()
-    return sanctions
-
-
-def add_sanction(user_id, ban_type, reason, mute_duration=None, ban_end_time=None):
-    conn = get_sanctions_db()
-    cursor = conn.cursor()
-    cursor.execute('''
-    INSERT INTO user_sanctions (user_id, ban_type, reason, mute_duration, ban_end_time)
-    VALUES (?, ?, ?, ?, ?)
-    ''', (user_id, ban_type, reason, mute_duration, ban_end_time))
-    conn.commit()
-    conn.close()
-
-
-def update_sanction_status(sanction_id, is_active):
-    conn = get_sanctions_db()
-    cursor = conn.cursor()
-    cursor.execute('''
-    UPDATE user_sanctions SET is_active = ? WHERE id = ?
-    ''', (is_active, sanction_id))
-    conn.commit()
-    conn.close()
-
-
-def is_user_banned(user_id):
-    sanctions = get_user_sanctions(user_id)
-    for sanction in sanctions:
-        if sanction['is_active'] and sanction['ban_type'] == 'ban':
-            return True
-    return False
-
-
-
-init_sanctions_db()
 init_bids_db()
 init_product_db()
 init_user_db()

@@ -1,0 +1,106 @@
+.container {
+    margin: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.section-title {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 24px;
+    color: #333;
+}
+
+/* Big Products */
+.big-product {
+    display: flex;           /* Create a horizontal layout */
+    flex-direction: row;     /* Place children (image and text) side-by-side */
+    align-items: center;     /* Center content vertically */
+    justify-content: space-between;
+    width: 80vw;             /* 80% of the screen width */
+    padding: 25px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    box-sizing: border-box;
+    gap: 20px;               /* Space between image and text */
+}
+
+/* Image styling */
+.big-product img {
+    max-width: 40%;          /* Image takes up 40% of the container width */
+    height: auto;            /* Maintain aspect ratio */
+    border-radius: 4px;
+    object-fit: contain;     /* Ensure the whole image is visible */
+}
+
+/* Text content styling */
+.big-product-text {
+    flex-grow: 1;            /* Allow text to take the remaining space */
+    padding: 0 15px;         /* Add some horizontal spacing */
+    text-align: left;
+}
+
+/* Small Products */
+.small-products-container {
+    display: flex;
+    flex-wrap: wrap;          /* Allow wrapping to the next line */
+    justify-content: space-between;
+    gap: 20px;                /* Add spacing between items */
+    margin-bottom: 30px;
+}
+
+.small-product {
+    width: 380px;  /* Each product occupies 20% minus gap space */
+    padding: 10px;            /* Increase padding for a larger feel */
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    overflow: hidden;         /* Prevent overflowing content */
+    box-sizing: border-box;   /* Include padding and border in width calculation */
+}
+
+
+.small-product img {
+    width: 100%;              /* Make the image fill the width of the container */
+    height: auto;             /* Maintain aspect ratio */
+    max-height: 300px;        /* Optional: limit the maximum height */
+    object-fit: cover;        /* Ensure the image fits without distortion */
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.product-image {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+
+
+.product-button {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 10px 20px;
+    background-color: #007bff; /* Primary color */
+    color: #fff;              /* White text */
+    text-decoration: none;    /* Remove underline */
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.product-button:hover {
+    background-color: #0056b3; /* Darker shade on hover */
+}

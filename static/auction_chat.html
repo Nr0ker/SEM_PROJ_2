@@ -1,9 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auction Chat</title>
+{% extends 'header.html' %}
+
+{% block title %}Auction Chat{% endblock %}
+{% block style %}
+
     <style>
         /* Стилі для чату */
         #chat-box {
@@ -125,7 +124,8 @@
             cursor: pointer;
         }
     </style>
-</head>
+    {% endblock %}
+   {% block content %}
 <body>
     <div id="chat-box">
         <!-- Вікно для повідомлень -->
@@ -243,5 +243,4 @@
             .catch(error => console.error('Error:', error));
         });
     </script>
-</body>
-</html>
+ {% endblock %}

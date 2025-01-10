@@ -1,0 +1,23 @@
+{% extends 'header.html' %}
+
+{% block title %}Update Product{% endblock %}
+{% block content %}
+    <h1>Update Product</h1>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+    {% if product %}
+    <form method="post" action="/update_product" enctype="multipart/form-data">
+        <input type="hidden" name="name" value="{{ product.name }}">
+        <label for="desc">Description:</label>
+        <textarea name="desc">{{ product.desc }}</textarea>
+        <label for="start_price">Start Price:</label>
+        <input type="text" name="start_price" value="{{ product.start_price }}">
+        <label for="photo">Photo:</label>
+        <input type="file" name="photo">
+        <button type="submit">Update Product</button>
+    </form>
+  {% else %}
+      <p style="color: red;">{{ error }}</p>
+  {% endif %}
+{% endblock %}
