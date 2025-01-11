@@ -1,23 +1,109 @@
 {% extends "header.html" %}
 {% block title %}Your Cart{% endblock %}
 {% block content %}
-    <h1>Your Cart</h1>
-    <h2>Welcome, {{ user.username }}!</h2>
+    <div class="cart-container">
+        <h1>Your Cart</h1>
+        <h2>Welcome, {{ user.username }}!</h2>
 
-    <ul>
-    {% for cart_item in cart_items %}
-        <li>
-            <img src="data:image/jpeg;base64,{{ cart_item.product.photo }}" alt="{{ cart_item.product.name }}" width="100px">
-            <p>{{ cart_item.product.name }}</p>
-            <p>Quantity: {{ cart_item.quantity }}</p>
-            <p>Price: ${{ cart_item.product.curr_price }}</p>
-            <p>Total: ${{ total_price }}</p>
-        </li>
-    {% endfor %}
-    </ul>
+        <div class="cart-items">
+            {% for cart_item in cart_items %}
+                <div class="cart-item">
+                    <img src="data:image/jpeg;base64,{{ cart_item.product.photo }}" alt="{{ cart_item.product.name }}" class="product-image">
+                    <div class="item-details">
+                        <h3>{{ cart_item.product.name }}</h3>
+                        <p><strong>Quantity:</strong> {{ cart_item.quantity }}</p>
+                        <p><strong>Price:</strong> ${{ cart_item.product.curr_price }}</p>
+                        <p><strong>Total:</strong> ${{ cart_item.product.curr_price * cart_item.quantity }}</p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
 
-    <h3>Total Price: ${{ total_price }}</h3>
+        <div class="cart-summary">
+            <h3>Total Price: ${{ total_price }}</h3>
+            <button class="checkout-btn">Proceed to Checkout</button>
+        </div>
+    </div>
 
-    <!-- Optionally add buttons to proceed to checkout or remove items from cart -->
-    <button>Proceed to Checkout</button>
+    <style>
+        /* Загальний стиль для кошика */
+        .cart-container {
+            width: 80%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .cart-items {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .cart-item {
+            display: flex;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .product-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .item-details {
+            flex: 1;
+            padding-left: 20px;
+        }
+
+        .item-details h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #333;
+        }
+
+        .item-details p {
+            font-size: 1.1rem;
+            color: #666;
+        }
+
+        .cart-summary {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .cart-summary h3 {
+            font-size: 1.8rem;
+            color: #333;
+        }
+
+        .checkout-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 1.2rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .checkout-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
 {% endblock %}

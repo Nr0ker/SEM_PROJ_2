@@ -203,7 +203,8 @@ async def index(request: Request, access_token: Optional[str] = Cookie(None), db
 # async def header(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
 #     user = get_current_user_from_token(access_token, db)
 #     return templates.TemplateResponse("header.html", {"request": request, "user": user})
-
+import logging
+from PIL import Image
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 @app.get("/register-page", response_class=HTMLResponse)
@@ -233,32 +234,33 @@ async def read_root(request: Request, access_token: Optional[str] = Cookie(None)
     if not user:
         return templates.TemplateResponse("login.html", {"request": request})
 
-    # Отримуємо продукти та категоризуємо їх
-    big_products = db.query(Product).filter(Product.category == "big").all()
-    small_products = db.query(Product).filter(Product.category == "small").all()
+    # Отримуємо головний продукт
+    main_product = db.query(Product).filter(Product.curr_price >= 1000).order_by(Product.curr_price.desc()).first()
 
-    # Категоризація продуктів за ціною
-    for product in big_products + small_products:
-        if product.curr_price and product.curr_price >= 1000:
-            product.category = "big"
-        else:
-            product.category = "small"
+    # Отримуємо всі інші продукти
+    small_products = db.query(Product).filter(Product.curr_price < 1000).all()
 
-        # Кодуємо фото в Base64 для рендерингу в HTML
-        if product.photo:
-            try:
-                product.photo = base64.b64encode(product.photo).decode("utf-8")
-            except Exception as e:
-                print(f"Error encoding product photo: {e}")
-                product.photo = None  # Обробка помилки
+    # Розрахунок часу закінчення аукціону для головного продукту (7 днів)
+    if main_product:
+        main_product_end_time = datetime.now() + timedelta(days=7)
+        main_product_end_time = main_product_end_time.strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        main_product_end_time = None
+
+    # Розрахунок часу закінчення аукціону для малих товарів (1 день)
+    for product in small_products:
+        product_end_time = datetime.now() + timedelta(days=1)
+        product.end_time = product_end_time.strftime("%Y-%m-%d %H:%M:%S")
 
     # Передаємо дані до шаблону
     return templates.TemplateResponse("main.html", {
         "request": request,
         "user": user,
-        "big_products": big_products,
-        "small_products": small_products
+        "main_product": main_product,
+        "small_products": small_products,
+        "main_product_end_time": main_product_end_time
     })
+
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -421,15 +423,21 @@ async def view_product(product_id: int, request: Request, access_token: Optional
     # Історія змін
     product_history = db.query(HistoryOfChanges).filter(HistoryOfChanges.attached_product_id == product_id).all()
 
+    if product.photo:
+        try:
+            product.photo = base64.b64encode(product.photo).decode("utf-8")
+        except Exception as e:
+            print(f"Error encoding product photo: {e}")
+            product.photo = None
+
     # Передаємо в шаблон функцію форматування дати
     return templates.TemplateResponse("view_product.html", {
         "request": request,
         "product": product,
         "user": user,
         "price_updates": product_history,
-        "format_date": format_date  # Передаємо функцію для шаблону
+        "format_date": format_date,  # Передаємо функцію для шаблону
     })
-
 
 
 from PIL import Image
@@ -449,41 +457,47 @@ async def add_product(request: Request,
         return templates.TemplateResponse("login.html", {"request": request})
 
     try:
-        # Handle photo, if provided (store as raw binary data)
+        # Обробка фото, якщо воно надане
         photo_data = None
         if photo:
-            photo_data = await photo.read()  # Read the photo as raw bytes
+            file_type = photo.content_type
+            if not file_type.startswith('image/'):
+                logging.error(f"Invalid file type: {file_type}")
+                raise ValueError("The file must be an image.")
 
-        # Default category is None; will update based on price
-        category = "small" if float(start_price) < 1000 else "big"
+            photo_data = await photo.read()
+            logging.debug(f"Photo data size: {len(photo_data)} bytes")
 
-        if photo_data:
-            # Compress the image
-            img = Image.open(io.BytesIO(photo_data))  # Use photo_data here
-            img = img.convert('RGB')  # Convert image to RGB (JPG compatible)
-
-            # Resize the image to a smaller size (optional)
-            img.thumbnail((1024, 1024))  # Resize to max 1024x1024
-
-            # Save the image into a buffer with a specific quality
-            img_byte_arr = io.BytesIO()
-            img.save(img_byte_arr, format='JPEG', quality=85)  # You can adjust quality here
-            compressed_image_data = img_byte_arr.getvalue()
+            try:
+                img = Image.open(io.BytesIO(photo_data))
+                img = img.convert('RGB')
+                img.thumbnail((1024, 1024))  # Опційне зменшення
+                img_byte_arr = io.BytesIO()
+                img.save(img_byte_arr, format='JPEG', quality=85)
+                compressed_image_data = img_byte_arr.getvalue()
+            except Exception as e:
+                logging.error(f"Error processing image: {e}")
+                raise
         else:
-            compressed_image_data = None  # If no photo, set it to None
+            compressed_image_data = None  # Якщо фото не надано, то set None
 
-        # Create the new product object
+        # Якщо ціна більша або рівна 1000, додаємо 100 доларів
+        start_price_float = float(start_price)
+        if start_price_float >= 1000:
+            start_price_float += 100  # Додати 100 доларів до ціни
+
+        # Створюємо новий продукт
         new_product = Product(
             name=name,
             desc=desc,
-            start_price=float(start_price),
-            curr_price=float(start_price),
-            photo=compressed_image_data,  # Store the compressed image data as binary
+            start_price=start_price_float,
+            curr_price=start_price_float,  # Початкова ціна = поточна ціна
+            photo=compressed_image_data,  # Зберігаємо стиснуті дані зображення
             user_id_attached=user.id,
-            category=category
+            category="small" if start_price_float < 1000 else "big"
         )
 
-        # Add the product to the database and commit
+        # Додаємо продукт у базу даних та підтверджуємо
         db.add(new_product)
         db.commit()
         db.refresh(new_product)
@@ -491,12 +505,11 @@ async def add_product(request: Request,
         return RedirectResponse(url="/", status_code=303)
 
     except Exception as e:
-        print(e)
+        logging.error(f"Error adding product: {e}")
         return templates.TemplateResponse("add_product.html", {
             "request": request,
             "error": f"Error: {str(e)}"
         })
-
 
 
 # UPDATE
@@ -581,6 +594,27 @@ async def update_product(request: Request,
         })
 
 
+@app.post("/buy_now/{product_id}")
+async def buy_now(product_id: int, db: Session = Depends(get_db), access_token: Optional[str] = Cookie(None)):
+    user = get_current_user_from_token(access_token, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # Перевіряємо, чи є ціна для миттєвої покупки
+    if product.instant_buy_price is None:
+        raise HTTPException(status_code=400, detail="This product does not have an instant buy price")
+
+    # Логіка покупки
+    # Наприклад, можна створити запис в таблиці замовлень або списку покупок
+    order = Order(user_id=user.id, product_id=product.id, price=product.instant_buy_price)
+    db.add(order)
+    db.commit()
+
+    return {"message": f"Product {product.name} purchased for ${product.instant_buy_price}"}
 
 
 

@@ -4,15 +4,88 @@
 
 {% block content %}
 <body>
-    <h1>Welcome, {{ user.full_name }}</h1>
-    <p>Email: {{ user.email }}</p>
-    <p>Username: {{ user.username }}</p>
-    <a href="/logout">Logout</a>
-    <a href="/index">index</a>
-    <a href="/add_product-page">Add Product</a>
-    <a href="/read_products">Read products</a>
-    <a href="/add_product-page">Add Product</a>
+    <div class="container">
+        <h1>Welcome, {{ user.full_name }}</h1>
+        <p>Email: {{ user.email }}</p>
+        <p>Username: {{ user.username }}</p>
 
+        <div class="buttons">
+            <a href="/logout" class="btn btn-logout">Logout</a>
+            <a href="/index" class="btn btn-primary">Index</a>
+            <a href="/add_product-page" class="btn btn-success">Add Product</a>
+            <a href="/read_products" class="btn btn-info">Read Products</a>
+        </div>
+    </div>
 
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            width: 80%;
+            margin: 50px auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        p {
+            color: #555;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            margin: 5px;
+            font-size: 16px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-logout {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+    </style>
 </body>
 {% endblock %}

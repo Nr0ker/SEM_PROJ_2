@@ -1,26 +1,35 @@
 {% extends 'header.html' %}
 
 {% block title %}Auction - Home{% endblock %}
+
 {% block style %}
     <link rel="stylesheet" href="/static/main_style.css">
     <style>
-        /* Центрування контенту */
+        /* Загальний стиль */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
         .container {
             text-align: center;
             max-width: 1200px;
             margin: 0 auto;
         }
 
-        h1, h2, h3 {
-            text-align: center;
-        }
-
-        /* Hero Section Styles */
         .hero {
-            background-color: #f4f4f4;
+            background-color: #007bff;
             padding: 50px;
             margin-bottom: 30px;
             border-radius: 10px;
+            color: white;
+            text-align: center;
+        }
+
+        .hero h1, .hero h2 {
+            margin: 0;
         }
 
         .cta-button {
@@ -37,155 +46,219 @@
             background-color: #218838;
         }
 
-        /* Dropdown Menu Styles */
-        .dropdown {
-            position: absolute;
-            top: 20px;
-            right: 20px;
+        /* Стилі для головного продукту */
+        .main-product-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
         }
 
-        .category-button {
+        .big-product-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
+            padding: 50px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            margin-top: 50px;
+        }
+
+        .big-product {
+            display: flex;
+            align-items: center;
+            width: 80%;
+        }
+
+        .product-image {
+            width: 300px;
+            height: auto;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-right: 40px;
+        }
+
+        .product-details {
+            text-align: left;
+        }
+
+        .product-details h3 {
+            font-size: 2rem;
+            margin-top: 0;
+        }
+
+        .product-details p {
+            font-size: 1.2rem;
+            margin: 15px 0;
+        }
+
+        .product-button {
             background-color: #007bff;
             color: white;
             padding: 10px 20px;
             text-decoration: none;
             border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .category-button:hover {
-            background-color: #0056b3;
-        }
-
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            background-color: #f9f9f9;
-            min-width: 160px;
-            z-index: 1;
-            border: 1px solid #ddd;
-            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
-            border-radius: 5px;
-            padding: 10px;
-        }
-
-        .dropdown:hover .dropdown-content {
-            display: block;
-        }
-
-        .dropdown-content a {
-            color: black;
-            padding: 8px 16px;
-            text-decoration: none;
-            display: block;
-        }
-
-        .dropdown-content a:hover {
-            background-color: #ddd;
-        }
-
-        /* Featured Products Section */
-        .featured-products {
-            margin-top: 40px;
-        }
-
-        .product-list {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-        }
-
-        .product-card {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            width: 250px;
-        }
-
-        .product-image {
-            width: 100%;
-            height: auto;
-            border-radius: 5px;
-        }
-
-        .product-button {
-            background-color: #28a745;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 10px;
+            margin-top: 20px;
         }
 
         .product-button:hover {
-            background-color: #218838;
+            background-color: #0056b3;
+        }
+
+        .auction-time {
+            font-size: 1.5rem;
+            color: #d9534f;
+            margin-top: 15px;
+        }
+
+        /* Стилі для інших товарів */
+        .other-products-title {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 50px 0 20px 0;
+            color: #555;
+        }
+
+        .other-products-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 2 стовпці */
+            gap: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .other-product {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .other-product img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .other-product h3 {
+            margin: 10px 0;
+            font-size: 1.2rem;
+            color: #333;
+        }
+
+        .other-product p {
+            font-size: 1rem;
+            color: #666;
+        }
+
+        .other-product a {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-top: 10px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .other-product a:hover {
+            background-color: #0056b3;
         }
     </style>
 {% endblock %}
 
 {% block content %}
     <div class="container">
-        <h1>Welcome to the Auction</h1>
-        <h2>Check out our amazing products</h2>
-
-        <!-- Hero Section -->
         <div class="hero">
+            <h1>Welcome to the Auction</h1>
+            <h2>Check out our amazing products</h2>
             <h3>Big Sale on Electronics, Fashion & More!</h3>
             <p>Start bidding now on the latest products</p>
-            <a href="#products" class="cta-button">View Products</a>
+            <a href="/start-bidding" class="cta-button">Start Bidding Now</a>
         </div>
 
-        <!-- Dropdown Menu for Categories (Moved to Top Right) -->
-        <div class="dropdown">
-            <a href="#" class="category-button">Categories</a>
-            <div class="dropdown-content">
-                <a href="/category/electronics">Electronics</a>
-                <a href="/category/fashion">Fashion</a>
-                <a href="/category/home-appliances">Home Appliances</a>
-                <a href="/category/toys">Toys</a>
-                <a href="/category/books">Books</a>
-            </div>
-        </div>
+        <!-- Заголовок для головного продукту -->
+        <h2 class="main-product-title">Головний продукт</h2>
 
-        <!-- Featured Products Section -->
-        <div class="featured-products">
-            <h2>Featured Products</h2>
-            <div class="product-list">
-                {% for product in featured_products %}
-                    <div class="product-card">
-                        {% if product.photo %}
-                            <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
-                        {% else %}
-                            <p>No image available</p>
-                        {% endif %}
-                        <h3>{{ product.name }}</h3>
-                        <p>{{ product.desc }}</p>
-                        <p><strong>Price:</strong> ${{ product.curr_price }}</p>
-                        <a href="/auction/{{ product.id }}" class="product-button">Go to Auction</a>
+        <!-- Великий продукт -->
+        {% if main_product %}
+        <div class="big-product-container">
+            <div class="big-product">
+                <img src="data:image/jpeg;base64,{{ main_product.photo }}" alt="{{ main_product.name }}" class="product-image">
+                <div class="product-details">
+                    <h3>{{ main_product.name }}</h3>
+                    <p>{{ main_product.desc }}</p>
+                    <a href="/product/{{ main_product.id }}" class="product-button">Join Auction</a>
+                    <div class="auction-time">
+                        Time Left: <span id="main-product-timer"></span>
                     </div>
-                {% endfor %}
+                </div>
             </div>
         </div>
+        {% else %}
+        <p>No main product available at the moment.</p>
+        {% endif %}
 
-        <!-- Other Product Sections -->
-        <h2 class="section-title">Big Products</h2>
-        <div class="big-products-container">
-            {% for product in big_products %}
-                <div class="big-product">
-                    {% if product.photo %}
-                        <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
-                    {% else %}
-                        <p>No image available</p>
-                    {% endif %}
-                    <h3>{{ product.name }}</h3>
-                    <p>{{ product.desc }}</p>
-                    <p>Price: ${{ product.curr_price }}</p>
-                    <a href="/product/{{ product.id }}" class="product-button">View Product</a>
+        <!-- Інші товари -->
+        <h2 class="other-products-title">Інші товари</h2>
+        <div class="other-products-container">
+            {% for product in small_products %}
+            <div class="other-product">
+                <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}">
+                <h3>{{ product.name }}</h3>
+                <p>{{ product.desc }}</p>
+                <p>Ціна: {{ product.start_price }} грн</p>
+                <a href="/product/{{ product.id }}" class="product-button">Переглянути</a>
+                <div class="auction-time">
+                    Time Left: <span id="product-{{ product.id }}-timer"></span>
                 </div>
+            </div>
             {% endfor %}
         </div>
     </div>
+
+    <script>
+        // Функція для оновлення таймера
+        function updateTimer(endTime, timerElementId) {
+            const timerElement = document.getElementById(timerElementId);
+            if (timerElement) {
+                const endDate = new Date(endTime).getTime();
+                const now = new Date().getTime();
+                const timeRemaining = endDate - now;
+
+                if (timeRemaining <= 0) {
+                    timerElement.textContent = "Auction Ended";
+                } else {
+                    const hours = Math.floor((timeRemaining / (1000 * 60 * 60)) % 24);
+                    const minutes = Math.floor((timeRemaining / (1000 * 60)) % 60);
+                    const seconds = Math.floor((timeRemaining / 1000) % 60);
+
+                    // Оновлюємо текст таймера
+                    timerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }
+            }
+        }
+
+        // Оновлення таймера для головного товару (7 днів)
+        {% if main_product_end_time %}
+        setInterval(function() {
+            updateTimer("{{ main_product_end_time }}", "main-product-timer");
+        }, 1000);
+        {% endif %}
+
+        // Оновлення таймерів для інших товарів (1 день)
+        {% for product in small_products %}
+        setInterval(function() {
+            updateTimer("{{ product.end_time }}", "product-{{ product.id }}-timer");
+        }, 1000);
+        {% endfor %}
+    </script>
 {% endblock %}
