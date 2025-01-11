@@ -35,3 +35,13 @@ class Products(BaseModel):
 
 class ProductName(BaseModel):
     name: str
+
+
+
+
+class ProductDetails(BaseModel):
+    id: int
+    name: str
+    desc: str
+    curr_price: float
+    photo: Optional[str]  # Фото в base64

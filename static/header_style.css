@@ -7,11 +7,11 @@ body, ul, li {
 }
 
 a {
-    text-decoration: underline;  /* Ensures links are underlined */
-    color: blue;                 /* Blue color for links */
+    text-decoration: underline;
+    color: blue;
 }
 
-
+/* Header Styles */
 .line-header {
     display: flex;
     justify-content: space-between;
@@ -36,16 +36,27 @@ a {
     color: orange;
 }
 
-.right-section {
+/* Profile Container */
+.profile-container {
     display: flex;
     align-items: center;
     position: relative;
+}
+
+.username {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #c9d1d9;
+    font-weight: 500;
+    cursor: default;
 }
 
 .profile-icon {
     width: 28px;
     height: 28px;
     border-radius: 50%;
+    margin-left: 10px;
     cursor: pointer;
     transition: transform 0.2s ease;
 }
@@ -54,10 +65,11 @@ a {
     transform: scale(1.1);
 }
 
+/* Profile Dropdown */
 .dropdown-menu {
     display: none;
     position: absolute;
-    top: 38px;
+    top: 35px;  /* Adjust as needed */
     right: 0;
     background: #2f363d;
     border: 1px solid #444c56;
@@ -86,7 +98,52 @@ a {
     color: black;
 }
 
-.dropdown:hover .dropdown-menu {
+/* Categories Dropdown */
+.category-button {
+    background-color: #5c6bc0;
+    color: white;  /* Білий колір для тексту */
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+.category-button:hover {
+    background-color: #3f4a89;
+}
+
+.category-dropdown {
+    display: none;
+    position: absolute;
+    top: 60px;
+    background-color: #2f363d;
+    width: 150px;
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.category-dropdown ul {
+    padding: 0;
+}
+
+.category-dropdown li {
+    padding: 10px;
+    color: white;  /* Білий колір для тексту */
+    border-bottom: 1px solid #444c56;
+}
+
+.category-dropdown li:last-child {
+    border-bottom: none;
+}
+
+.category-dropdown li:hover {
+    background-color: #3f4a89;  /* Темно-синій фон при наведенні */
+}
+
+/* Active classes for dropdowns */
+.active {
     display: block;
 }
 
@@ -101,28 +158,4 @@ a {
         width: 100%;
         text-align: center;
     }
-}
-
-.dropdown.active .dropdown-menu {
-    display: block; /* Show dropdown when active */
-}
-
-.dropdown-menu {
-    display: none; /* Default hidden state */
-}
-
-
-
-/* Styling for the username */
-.username {
-    margin-right: 10px; /* Space between username and profile icon */
-    font-size: 14px;
-    color: #c9d1d9;
-    font-weight: 500;
-    transition: color 0.3s ease;
-    cursor: default; /* Prevent pointer cursor on text */
-}
-
-.username:hover {
-    color: orange; /* Change color on hover */
 }

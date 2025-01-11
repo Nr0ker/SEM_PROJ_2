@@ -1,15 +1,33 @@
-/* Container for the product detail page */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+
 .product-detail {
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
     text-align: center;
-    background-color: #f9f9f9;
+    background-color: #fff;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Image styling */
+
 .product-image {
     width: 100%;
     max-width: 500px;
@@ -18,7 +36,7 @@
     margin-bottom: 20px;
 }
 
-/* Back button styling */
+
 .back-button {
     display: inline-block;
     margin-top: 20px;
@@ -34,4 +52,74 @@
 
 .back-button:hover {
     background-color: #0056b3;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #218838;
+}
+
+#price-history {
+    list-style-type: none;
+    margin-top: 20px;
+    padding: 0;
+}
+
+#price-history li {
+    padding: 5px 0;
+}
+
+input[type="number"] {
+    padding: 10px;
+    font-size: 16px;
+    width: 150px;
+    margin-right: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+input[type="number"]:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+#send-update {
+    padding: 10px 20px;
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#send-update:hover {
+    background-color: #138496;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+    .product-detail {
+        padding: 15px;
+    }
+
+    .product-image {
+        max-width: 100%;
+    }
+
+    button, #send-update {
+        width: 100%;
+        padding: 12px;
+    }
 }

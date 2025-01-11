@@ -52,10 +52,15 @@
             font-size: 14px;
             text-align: center;
         }
+        #product-preview {
+            margin-top: 20px;
+            max-width: 300px;
+            display: none;
+        }
     </style>
 {% endblock %}
-{% block content %}
 
+{% block content %}
     <div class="form-container">
         <h1>Add Product</h1>
 
@@ -81,7 +86,11 @@
 
             <div class="form-group">
                 <label for="photo">Product Photo</label>
-                <input type="file" id="photo" name="photo" accept="image/*">
+                <input type="file" id="photo" name="photo" accept="image/*" onchange="previewImage(event)">
+            </div>
+
+            <div class="form-group">
+                <img id="product-preview" src="#" alt="Product Preview" />
             </div>
 
             <div class="form-group">
@@ -89,4 +98,16 @@
             </div>
         </form>
     </div>
+
+    <script>
+        function previewImage(event) {
+            var reader = new FileReader();
+            reader.onload = function() {
+                var output = document.getElementById('product-preview');
+                output.src = reader.result;
+                output.style.display = 'block'; // Display image after it loads
+            }
+            reader.readAsDataURL(event.target.files[0]);
+        }
+    </script>
 {% endblock %}

@@ -1,6 +1,11 @@
 {% extends "header.html" %}
+
 {% block title %}View Product - {{ product.name }}{% endblock %}
-{% block style %}<link rel="stylesheet" href="/static/view_product.css">{% endblock %}
+
+{% block style %}
+    <link rel="stylesheet" href="/static/view_product.css">
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <h1>Product Details</h1>
@@ -48,30 +53,24 @@
 <script>
     const socket = new WebSocket(`ws://localhost:8000/ws/{{ product.id }}`);
 
-    let inactivityTimeout = null; // To track inactivity for adding the product to the cart.
+    let inactivityTimeout = null;
 
-    // Function to reset the inactivity timer
     function resetInactivityTimer() {
         if (inactivityTimeout) clearTimeout(inactivityTimeout);
         inactivityTimeout = setTimeout(() => {
-            // Send product to the user's cart and notify
             window.location.href = `/add_to_cart/{{ user.id }}/{{ product.id }}`;
             alert("This product has been added to your cart due to inactivity.");
-        }, 300000); // 5 minutes (300,000 ms)
+        }, 300000); // 5 minutes
     }
 
-    // Reset timer on page load
     resetInactivityTimer();
 
-    // Listen for incoming messages
     socket.onmessage = function(event) {
-        resetInactivityTimer(); // Reset inactivity timer on updates
+        resetInactivityTimer();
         const data = JSON.parse(event.data);
         if (data.productId === {{ product.id }}) {
-            // Update the current price display
             document.getElementById("current-price").innerText = `$${data.newPrice.toFixed(2)}`;
 
-            // Append to the price history
             const history = document.getElementById("price-history");
             const newItem = document.createElement("li");
             newItem.innerHTML = `<strong>${new Date(data.timestamp).toLocaleString('en-US')}:</strong> $${data.newPrice.toFixed(2)}`;
@@ -79,19 +78,17 @@
         }
     };
 
-    // Send updates when the button is clicked
     document.getElementById("send-update").addEventListener("click", function() {
         const newPrice = parseFloat(document.getElementById("price-input").value);
         const userId = {{ user.id }};
         const currPrice = parseFloat(document.getElementById("current-price").innerText.replace('$', ''));
 
-        // Prevent price updates lower than the current price
         if (!isNaN(newPrice) && newPrice > currPrice) {
             socket.send(JSON.stringify({
                 productId: {{ product.id }},
                 userId: userId,
                 newPrice: newPrice,
-                timestamp: new Date().toISOString() // Send the current timestamp
+                timestamp: new Date().toISOString()
             }));
         } else {
             alert("The new price must be higher than the current price.");

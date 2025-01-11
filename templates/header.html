@@ -14,25 +14,37 @@
             <a href="/" class="main-page">Main Page</a>
         </div>
         <div class="right-section">
-            <span class="username" id="username">
-            {% if user %}
-                {{ user['username'] }}
-            {% else %}
-                Guest
-            {% endif %}
-            </span>
-            <div class="dropdown">
+            <div class="profile-container">
+                <span class="username">
+                    {% if user %}
+                        {{ user['username'] }}
+                    {% else %}
+                        Guest
+                    {% endif %}
+                </span>
                 <img src="/static/pfp.jpg" alt="Profile Icon" class="profile-icon" id="profile-icon" />
                 <ul class="dropdown-menu" id="dropdown-menu">
                     {% if user %}
-                    <li><a href="/settings">Settings</a></li>
-                    <li><a href="/profile">Profile</a></li>
-                    <li><a href="/cart/{{ user['id'] }}">My Cart</a></li>
-                    <li><a href="/logout">Logout</a></li>
+                        <li><a href="/settings">Settings</a></li>
+                        <li><a href="/profile">Profile</a></li>
+                        <li><a href="/cart/{{ user['id'] }}">My Cart</a></li>
+                        <li><a href="/logout">Logout</a></li>
                     {% else %}
                         <li><a href="/login">Login</a></li>
                         <li><a href="/register-page">Register</a></li>
                     {% endif %}
+                </ul>
+            </div>
+        </div>
+        <div class="categories">
+            <button id="category-button" class="category-button">Categories</button>
+            <div id="category-dropdown" class="category-dropdown">
+                <ul>
+                    <li><a href="/category/electronics">Electronics</a></li>
+                    <li><a href="/category/furniture">Furniture</a></li>
+                    <li><a href="/category/clothing">Clothing</a></li>
+                    <li><a href="/category/books">Books</a></li>
+
                 </ul>
             </div>
         </div>
@@ -45,18 +57,31 @@
         document.addEventListener('DOMContentLoaded', () => {
             const profileIcon = document.getElementById('profile-icon');
             const dropdownMenu = document.getElementById('dropdown-menu');
-            const dropdown = profileIcon.closest('.dropdown');
+            const dropdown = profileIcon.closest('.profile-container');
+            const categoryButton = document.getElementById('category-button');
+            const categoryDropdown = document.getElementById('category-dropdown');
 
-            // Toggle dropdown when the icon is clicked
+            // Toggle profile dropdown when the profile icon is clicked
             profileIcon.addEventListener('click', (event) => {
                 event.stopPropagation(); // Prevent event from bubbling to the document
-                dropdown.classList.toggle('active');
+                dropdownMenu.classList.toggle('active');
+                categoryDropdown.classList.remove('active'); // Close categories menu if profile is clicked
             });
 
-            // Close the dropdown when clicking outside its range
+            // Toggle category dropdown when the category button is clicked
+            categoryButton.addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent event from bubbling to the document
+                categoryDropdown.classList.toggle('active');
+                dropdownMenu.classList.remove('active'); // Close profile menu if category is clicked
+            });
+
+            // Close the dropdowns when clicking outside their range
             document.addEventListener('click', (event) => {
                 if (!dropdown.contains(event.target)) {
-                    dropdown.classList.remove('active');
+                    dropdownMenu.classList.remove('active');
+                }
+                if (!categoryButton.contains(event.target) && !categoryDropdown.contains(event.target)) {
+                    categoryDropdown.classList.remove('active');
                 }
             });
         });
