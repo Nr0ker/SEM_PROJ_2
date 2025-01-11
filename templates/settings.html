@@ -1,41 +1,187 @@
 {% extends "header.html" %}
+
 {% block title %}User Settings{% endblock %}
-{% block style %}<link rel="stylesheet" href="/static/settings.css">{% endblock %}
+
+{% block style %}
+    <link rel="stylesheet" href="/static/settings.css">
+    <style>
+        /* Загальні стилі */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1E2A47;
+            color: #D1D5DB;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Контейнер для налаштувань */
+        .settings-container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 40px 30px;
+            background-color: #3E5972;
+            color: #FFFFFF;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .settings-container h2 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            color: #FF9E3D;
+            text-align: center;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            position: relative;
+        }
+
+        /* Підкреслення для заголовку */
+        .settings-container h2::after {
+            content: "";
+            position: absolute;
+            width: 60%;
+            height: 4px;
+            background-color: #FF9E3D;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+
+        /* Формова група */
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 1.1rem;
+            color: #F2F2F2;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 20px;
+            border: 2px solid #2C3A51;
+            border-radius: 10px;
+            background-color: #2C3A51;
+            color: #F2F2F2;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #FF9E3D;
+            background-color: #3E5972;
+            box-shadow: 0 0 10px rgba(255, 158, 61, 0.5);
+        }
+
+        .form-group input::placeholder {
+            color: #B0BEC5;
+            opacity: 0.7;
+        }
+
+        /* Кнопка відправки */
+        .submit-btn {
+            width: 100%;
+            padding: 15px 20px;
+            background-color: #FF9E3D;
+            color: #FFFFFF;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .submit-btn:hover {
+            background-color: #FF6A13;
+        }
+
+        /* Попередження */
+        .warning {
+            font-size: 1.1rem;
+            color: #FF7043;
+            text-align: center;
+            margin-top: 30px;
+            font-weight: bold;
+        }
+
+        .warning::before {
+            content: "⚠️";
+            margin-right: 10px;
+        }
+
+        /* Візуальна деталь для фону */
+        .settings-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://source.unsplash.com/1600x900/?abstract,sea'); /* Додавання абстрактного фону */
+            background-size: cover;
+            background-position: center;
+            opacity: 0.1;
+            filter: blur(8px);
+            z-index: -1;
+        }
+
+        /* Сторінка за замовчуванням */
+        .container {
+            margin: 0 auto;
+            padding: 50px 20px;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
-<div class="settings-container">
-    <h2>User Settings</h2>
-    <form id="settingsForm" method="POST" action="/update-settings">
-        <!-- Username Update -->
-        <div class="form-group">
-            <label for="old_username">Current Username</label>
-            <input type="text" id="old_username" name="old_username" placeholder="Enter current username">
-        </div>
-        <div class="form-group">
-            <label for="new_username">New Username</label>
-            <input type="text" id="new_username" name="new_username" placeholder="Enter new username">
-        </div>
+    <div class="settings-container">
+        <h2>User Settings</h2>
+        <form id="settingsForm" method="POST" action="/update-settings">
+            <!-- Username Update -->
+            <div class="form-group">
+                <label for="old_username">Current Username</label>
+                <input type="text" id="old_username" name="old_username" placeholder="Enter current username">
+            </div>
+            <div class="form-group">
+                <label for="new_username">New Username</label>
+                <input type="text" id="new_username" name="new_username" placeholder="Enter new username">
+            </div>
 
-        <!-- Password Update -->
-        <div class="form-group">
-            <label for="old_password">Current Password</label>
-            <input type="password" id="old_password" name="old_password" placeholder="Enter current password">
-        </div>
-        <div class="form-group">
-            <label for="new_password">New Password</label>
-            <input type="password" id="new_password" name="new_password" placeholder="Enter new password">
-        </div>
+            <!-- Password Update -->
+            <div class="form-group">
+                <label for="old_password">Current Password</label>
+                <input type="password" id="old_password" name="old_password" placeholder="Enter current password">
+            </div>
+            <div class="form-group">
+                <label for="new_password">New Password</label>
+                <input type="password" id="new_password" name="new_password" placeholder="Enter new password">
+            </div>
 
-        <!-- Email Update -->
-        <div class="form-group">
-            <label for="old_email">Current Email</label>
-            <input type="email" id="old_email" name="old_email" placeholder="Enter current email">
-        </div>
-        <div class="form-group">
-            <label for="new_email">New Email</label>
-            <input type="email" id="new_email" name="new_email" placeholder="Enter new email">
-        </div>
-        <h2 style="color: red;">WARNING: After any kind of changes you will be automatically signed off</h2>
-        <button type="submit" class="submit-btn">Save Changes</button>
-    </form>
-</div>
+            <!-- Email Update -->
+            <div class="form-group">
+                <label for="old_email">Current Email</label>
+                <input type="email" id="old_email" name="old_email" placeholder="Enter current email">
+            </div>
+            <div class="form-group">
+                <label for="new_email">New Email</label>
+                <input type="email" id="new_email" name="new_email" placeholder="Enter new email">
+            </div>
+
+            <h2 class="warning">WARNING: After any kind of changes you will be automatically signed off</h2>
+            <button type="submit" class="submit-btn">Save Changes</button>
+        </form>
+    </div>
 {% endblock %}

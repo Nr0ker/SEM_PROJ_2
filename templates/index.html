@@ -1,13 +1,82 @@
 {% extends 'header.html' %}
 
 {% block title %}Main{% endblock %}
-{% block content %}
-{% if not user %}
-<p>
-    Please <a href="/login">Log in</a> or <a href="/register-page">Sign up</a> to add products.
-</p>
-{% else %}
-    <h1>Welcome, {{ user['username'] }}</h1>
 
-{% endif %}
+{% block content %}
+<div class="main-container">
+    <div class="meme-container">
+        <h1>🤡 О, ти думав, що тут буде щось серйозне? Ну, типу магазин? Ахахах, кумедно!</h1>
+        <p> 😂 Ось ідеальний момент: натискаєш "Купити" — і твої гроші зникають, а твій банківський рахунок каже "Прощавай!"</p>
+        <p> 🔥 А ось і бонус! Ми не лише відправляємо тобі товар, ми відправляємо твої гроші на смітник! Ха-ха, як тобі?</p>
+        <img src="https://media1.tenor.com/m/x8v1oNUOmg4AAAAd/rickroll-roll.gif" alt="Rickroll Meme" class="meme-image">
+        <p class="bonus-text">О, і наостанок: ТИ РІКРОЛЛЕН! Ти думав, що тут буде щось корисне? Ні-ні! Це лише жарт! 😏</p>
+        <button class="btn-rickroll">Іди на сайт, де тебе рікролять ще раз</button>
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #1e2a47; /* Темно-морський фон для всієї сторінки */
+        font-family: 'Arial', sans-serif;
+        color: #FFFFFF;
+        margin: 0;
+        padding: 0;
+    }
+
+    .main-container {
+        text-align: center;
+        margin-top: 50px;
+        padding: 40px;
+        background-color: #2C3A51; /* Темно-морський фон для основного контейнера */
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .meme-container {
+        background-color: #223344; /* Темно-синій відтінок для внутрішнього контейнера */
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .meme-image {
+        width: 100%;
+        max-width: 400px;
+        margin-top: 20px;
+        border-radius: 15px;
+    }
+
+    h1 {
+        font-size: 2.5rem;
+        color: #FF9E3D;
+        margin-bottom: 20px;
+    }
+
+    p {
+        font-size: 1.2rem;
+        margin-top: 15px;
+    }
+
+    .bonus-text {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #FF6347;
+        margin-top: 30px;
+    }
+
+    .btn-rickroll {
+        background-color: #FF9E3D;
+        color: #FFFFFF;
+        padding: 12px 20px;
+        font-size: 1.1rem;
+        border-radius: 10px;
+        text-decoration: none;
+        transition: background-color 0.3s ease;
+        margin-top: 30px;
+    }
+
+    .btn-rickroll:hover {
+        background-color: #FF6A13;
+    }
+</style>
 {% endblock %}

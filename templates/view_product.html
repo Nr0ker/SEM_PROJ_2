@@ -4,95 +4,227 @@
 
 {% block style %}
     <link rel="stylesheet" href="/static/view_product.css">
+    <style>
+        /* Загальні стилі */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #25274D;
+            color: #AAABB8;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .product-detail {
+            background-color: #2E9CCA;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .product-detail h2 {
+            font-size: 2.2rem;
+            color: #FFFFFF;
+            margin-bottom: 15px;
+        }
+
+        .product-image {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .product-detail p {
+            font-size: 1.1rem;
+            color: #AAABB8;
+            margin-top: 10px;
+        }
+
+        .product-detail .back-button {
+            display: inline-block;
+            background-color: #29648A;
+            color: #FFF;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-top: 25px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .product-detail .back-button:hover {
+            background-color: #1E4F66;
+        }
+
+        .product-detail button {
+            background-color: #2E9CCA;
+            color: #FFF;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            border-radius: 6px;
+            margin-top: 20px;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .product-detail button:hover {
+            background-color: #29648A;
+        }
+
+        /* Ціна */
+        #current-price {
+            font-size: 1.4rem;
+            color: #FF7043;
+            font-weight: bold;
+        }
+
+        /* Історія оновлення ціни */
+        #price-history {
+            list-style: none;
+            padding: 0;
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        #price-history li {
+            background-color: #464866;
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 6px;
+            color: #AAABB8;
+        }
+
+        #price-history li strong {
+            color: #FF7043;
+        }
+
+        /* Відправка нової ціни */
+        #price-input {
+            padding: 8px;
+            font-size: 1.1rem;
+            border-radius: 6px;
+            border: none;
+            margin-right: 10px;
+            width: 150px;
+        }
+
+        #send-update {
+            background-color: #2E9CCA;
+            color: #FFF;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(46, 156, 202, 0.5);
+            transition: background-color 0.3s ease;
+        }
+
+        #send-update:hover {
+            background-color: #29648A;
+        }
+
+    </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1>Product Details</h1>
+    <div class="container">
+        <h1>Product Details</h1>
 
-    <div class="product-detail">
-        <h2>{{ product.name }}</h2>
+        <div class="product-detail">
+            <h2>{{ product.name }}</h2>
 
-        {% if product.photo %}
-            <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
-        {% else %}
-            <p>No image available</p>
-        {% endif %}
+            {% if product.photo %}
+                <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
+            {% else %}
+                <p>No image available</p>
+            {% endif %}
 
-        <p><strong>Description:</strong> {{ product.desc }}</p>
-        <p><strong>Current Price:</strong> <span id="current-price">${{ product.curr_price }}</span></p>
+            <p><strong>Description:</strong> {{ product.desc }}</p>
+            <p><strong>Current Price:</strong> <span id="current-price">${{ product.curr_price }}</span></p>
 
-        <a href="/" class="back-button">Back to Products List</a>
-        <a href="/add_to_cart/{{ user.id }}/{{ product.id }}">
-            <button>Add to Cart</button>
-        </a>
+            <a href="/" class="back-button">Back to Products List</a>
+            <a href="/add_to_cart/{{ user.id }}/{{ product.id }}">
+                <button>Add to Cart</button>
+            </a>
+        </div>
+
+        <div>
+            <h3>Price Update History</h3>
+            <ul id="price-history">
+                {% for update in price_updates %}
+                    <li><strong>{{ update.timestamp.strftime('%m/%d/%Y %H:%M:%S') }}:</strong> ${{ update.new_price }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div>
+            <p>Send a Price Update:</p>
+            <input
+                type="number"
+                id="price-input"
+                placeholder="Enter new price"
+                step="10"
+                min="{{ product.curr_price }}"
+            />
+            <button id="send-update">Send Update</button>
+        </div>
     </div>
-</div>
 
-<div>
-    <h3>Price Update History</h3>
-    <ul id="price-history">
-        {% for update in price_updates %}
-            <li><strong>{{ update.timestamp.strftime('%m/%d/%Y %H:%M:%S') }}:</strong> ${{ update.new_price }}</li>
-        {% endfor %}
-    </ul>
-</div>
+    <script>
+        const socket = new WebSocket(`ws://localhost:8000/ws/{{ product.id }}`);
 
-<div>
-    <p>Send a Price Update:</p>
-    <input
-        type="number"
-        id="price-input"
-        placeholder="Enter new price"
-        step="0.01"
-        min="{{ product.curr_price }}"
-    />
-    <button id="send-update">Send Update</button>
-</div>
+        let inactivityTimeout = null;
 
-<script>
-    const socket = new WebSocket(`ws://localhost:8000/ws/{{ product.id }}`);
+        function resetInactivityTimer() {
+            if (inactivityTimeout) clearTimeout(inactivityTimeout);
+            inactivityTimeout = setTimeout(() => {
+                window.location.href = `/add_to_cart/{{ user.id }}/{{ product.id }}`;
+                alert("This product has been added to your cart due to inactivity.");
+            }, 300000); // 5 minutes
+        }
 
-    let inactivityTimeout = null;
-
-    function resetInactivityTimer() {
-        if (inactivityTimeout) clearTimeout(inactivityTimeout);
-        inactivityTimeout = setTimeout(() => {
-            window.location.href = `/add_to_cart/{{ user.id }}/{{ product.id }}`;
-            alert("This product has been added to your cart due to inactivity.");
-        }, 300000); // 5 minutes
-    }
-
-    resetInactivityTimer();
-
-    socket.onmessage = function(event) {
         resetInactivityTimer();
-        const data = JSON.parse(event.data);
-        if (data.productId === {{ product.id }}) {
-            document.getElementById("current-price").innerText = `$${data.newPrice.toFixed(2)}`;
 
-            const history = document.getElementById("price-history");
-            const newItem = document.createElement("li");
-            newItem.innerHTML = `<strong>${new Date(data.timestamp).toLocaleString('en-US')}:</strong> $${data.newPrice.toFixed(2)}`;
-            history.appendChild(newItem);
-        }
-    };
+        socket.onmessage = function(event) {
+            resetInactivityTimer();
+            const data = JSON.parse(event.data);
+            if (data.productId === {{ product.id }}) {
+                document.getElementById("current-price").innerText = `$${data.newPrice.toFixed(2)}`;
 
-    document.getElementById("send-update").addEventListener("click", function() {
-        const newPrice = parseFloat(document.getElementById("price-input").value);
-        const userId = {{ user.id }};
-        const currPrice = parseFloat(document.getElementById("current-price").innerText.replace('$', ''));
+                const history = document.getElementById("price-history");
+                const newItem = document.createElement("li");
+                newItem.innerHTML = `<strong>${new Date(data.timestamp).toLocaleString('en-US')}:</strong> $${data.newPrice.toFixed(2)}`;
+                history.appendChild(newItem);
+            }
+        };
 
-        if (!isNaN(newPrice) && newPrice > currPrice) {
-            socket.send(JSON.stringify({
-                productId: {{ product.id }},
-                userId: userId,
-                newPrice: newPrice,
-                timestamp: new Date().toISOString()
-            }));
-        } else {
-            alert("The new price must be higher than the current price.");
-        }
-    });
-</script>
+        document.getElementById("send-update").addEventListener("click", function() {
+            const newPrice = parseFloat(document.getElementById("price-input").value);
+            const userId = {{ user.id }};
+            const currPrice = parseFloat(document.getElementById("current-price").innerText.replace('$', ''));
+
+            if (!isNaN(newPrice) && newPrice > currPrice) {
+                socket.send(JSON.stringify({
+                    productId: {{ product.id }},
+                    userId: userId,
+                    newPrice: newPrice,
+                    timestamp: new Date().toISOString()
+                }));
+            } else {
+                alert("The new price must be higher than the current price.");
+            }
+        });
+    </script>
 {% endblock %}

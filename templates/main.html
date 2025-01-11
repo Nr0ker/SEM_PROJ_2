@@ -1,176 +1,146 @@
 {% extends 'header.html' %}
 
-{% block title %}Auction - Home{% endblock %}
+{% block title %}Oceanic Auction - The Ultimate Experience{% endblock %}
 
 {% block style %}
-    <link rel="stylesheet" href="/static/main_style.css">
     <style>
-        /* Загальний стиль */
+        /* Загальні стилі */
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
+            background-color: #25274D;
+            color: #AAABB8;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            overflow-x: hidden;
+            scroll-behavior: smooth; /* Додаємо плавне прокручування */
         }
 
         .container {
-            text-align: center;
             max-width: 1200px;
             margin: 0 auto;
+            padding: 50px 20px;
         }
 
+        /* Героїчний фон з морським стилем */
         .hero {
-            background-color: #007bff;
-            padding: 50px;
-            margin-bottom: 30px;
-            border-radius: 10px;
-            color: white;
+            background: url('https://via.placeholder.com/1500x800') center/cover no-repeat;
+            background-size: cover;
+            padding: 100px 30px;
+            color: #FFFFFF;
             text-align: center;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
         }
 
-        .hero h1, .hero h2 {
+        .hero h1 {
+            font-size: 3.5rem;
             margin: 0;
         }
 
-        .cta-button {
-            background-color: #28a745;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            display: inline-block;
+        .hero h2 {
+            font-size: 1.8rem;
             margin-top: 20px;
+        }
+
+        .cta-button {
+            background-color: #2E9CCA;
+            color: #FFF;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 6px;
+            margin-top: 20px;
+            text-decoration: none;
+            cursor: pointer; /* Додаємо курсор для кнопки */
         }
 
         .cta-button:hover {
-            background-color: #218838;
+            background-color: #29648A;
         }
 
-        /* Стилі для головного продукту */
-        .main-product-title {
-            font-size: 2.5rem;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
-        }
-
-        .big-product-container {
+        /* Продукти */
+        .product-container.oceanic {
             display: flex;
             justify-content: center;
-            align-items: center;
-            background-color: #fff;
-            padding: 50px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-            margin-top: 50px;
+            background-color: #2E9CCA;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            margin-top: 40px;
         }
 
-        .big-product {
-            display: flex;
-            align-items: center;
-            width: 80%;
-        }
-
-        .product-image {
-            width: 300px;
-            height: auto;
-            object-fit: cover;
-            border-radius: 8px;
-            margin-right: 40px;
-        }
-
-        .product-details {
+        .product-container .product-details {
             text-align: left;
+            color: #AAABB8;
+            margin-left: 20px;
         }
 
-        .product-details h3 {
-            font-size: 2rem;
-            margin-top: 0;
-        }
-
-        .product-details p {
-            font-size: 1.2rem;
-            margin: 15px 0;
-        }
-
-        .product-button {
-            background-color: #007bff;
-            color: white;
+        .product-container .product-button {
+            background-color: #29648A;
+            color: #FFF;
             padding: 10px 20px;
+            border-radius: 6px;
             text-decoration: none;
-            border-radius: 5px;
+            font-size: 1.1rem;
             margin-top: 20px;
         }
 
-        .product-button:hover {
-            background-color: #0056b3;
+        .product-container .product-button:hover {
+            background-color: #1E4F66;
         }
 
         .auction-time {
-            font-size: 1.5rem;
-            color: #d9534f;
             margin-top: 15px;
+            font-size: 1.2rem;
+            color: #FF7043;
         }
 
-        /* Стилі для інших товарів */
+        /* Інші продукти */
         .other-products-title {
-            font-size: 2rem;
-            font-weight: bold;
             text-align: center;
-            margin: 50px 0 20px 0;
-            color: #555;
+            font-size: 2rem;
+            color: #AAABB8;
+            margin: 60px 0 20px 0;
         }
 
         .other-products-container {
             display: grid;
-            grid-template-columns: repeat(2, 1fr); /* 2 стовпці */
-            gap: 20px;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 50px;
         }
 
         .other-product {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
+            background-color: #464866;
+            padding: 15px;
             text-align: center;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
         }
 
         .other-product img {
             width: 100%;
-            height: 200px;
+            height: 220px;
             object-fit: cover;
             border-radius: 8px;
         }
 
         .other-product h3 {
+            font-size: 1.4rem;
+            color: #AAABB8;
             margin: 10px 0;
-            font-size: 1.2rem;
-            color: #333;
-        }
-
-        .other-product p {
-            font-size: 1rem;
-            color: #666;
         }
 
         .other-product a {
-            display: inline-block;
-            background-color: #007bff;
-            color: white;
+            background-color: #2E9CCA;
+            color: #FFF;
             padding: 10px 20px;
-            border-radius: 5px;
-            margin-top: 10px;
+            border-radius: 6px;
+            font-size: 1rem;
             text-decoration: none;
-            font-size: 0.9rem;
         }
 
         .other-product a:hover {
-            background-color: #0056b3;
+            background-color: #1E4F66;
         }
     </style>
 {% endblock %}
@@ -178,87 +148,74 @@
 {% block content %}
     <div class="container">
         <div class="hero">
-            <h1>Welcome to the Auction</h1>
-            <h2>Check out our amazing products</h2>
-            <h3>Big Sale on Electronics, Fashion & More!</h3>
-            <p>Start bidding now on the latest products</p>
-            <a href="/start-bidding" class="cta-button">Start Bidding Now</a>
+            <h1>Welcome to the Oceanic Auction</h1>
+            <h2>Explore rare treasures from the ocean depths</h2>
+            <a href="#auction-2" class="cta-button" id="start-bid-button">Start Bidding Now</a>
         </div>
 
-        <!-- Заголовок для головного продукту -->
-        <h2 class="main-product-title">Головний продукт</h2>
-
-        <!-- Великий продукт -->
-        {% if main_product %}
-        <div class="big-product-container">
-            <div class="big-product">
-                <img src="data:image/jpeg;base64,{{ main_product.photo }}" alt="{{ main_product.name }}" class="product-image">
-                <div class="product-details">
-                    <h3>{{ main_product.name }}</h3>
-                    <p>{{ main_product.desc }}</p>
-                    <a href="/product/{{ main_product.id }}" class="product-button">Join Auction</a>
-                    <div class="auction-time">
-                        Time Left: <span id="main-product-timer"></span>
-                    </div>
-                </div>
+        <!-- Перший аукціон -->
+        <h2 class="other-products-title">Auction 1 - Oceanic Gems</h2>
+        <div class="product-container oceanic">
+            <img src="https://via.placeholder.com/500x300" alt="Ocean Gem" class="product-image">
+            <div class="product-details">
+                <h3>Exclusive Ocean Gem</h3>
+                <p>Bid on this rare ocean gem, a true treasure from the deep.</p>
+                <a href="/product/1" class="product-button">Join Auction</a>
+                <div class="auction-time">Time Left: <span id="product-1-timer"></span></div>
             </div>
         </div>
-        {% else %}
-        <p>No main product available at the moment.</p>
-        {% endif %}
 
-        <!-- Інші товари -->
-        <h2 class="other-products-title">Інші товари</h2>
+        <!-- Другий аукціон -->
+        <h2 id="auction-2" class="other-products-title">Auction 2 - Underwater Relics</h2>
+        <div class="product-container oceanic">
+            <img src="https://via.placeholder.com/500x300" alt="Ancient Relic" class="product-image">
+            <div class="product-details">
+                <h3>Ancient Relic of the Sea</h3>
+                <p>Discover this ancient artifact and more hidden in the depths.</p>
+                <a href="/product/2" class="product-button">Join Auction</a>
+                <div class="auction-time">Time Left: <span id="product-2-timer"></span></div>
+            </div>
+        </div>
+
+        <!-- Третій аукціон -->
+        <h2 class="other-products-title">Auction 3 - Lost Treasures</h2>
+        <div class="product-container oceanic">
+            <img src="https://via.placeholder.com/500x300" alt="Treasure Chest" class="product-image">
+            <div class="product-details">
+                <h3>Sunken Treasure Chest</h3>
+                <p>A treasure chest filled with gold coins and gems awaits!</p>
+                <a href="/product/3" class="product-button">Join Auction</a>
+                <div class="auction-time">Time Left: <span id="product-3-timer"></span></div>
+            </div>
+        </div>
+
+        <h3 class="other-products-title">Other Auctions</h3>
         <div class="other-products-container">
-            {% for product in small_products %}
             <div class="other-product">
-                <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}">
-                <h3>{{ product.name }}</h3>
-                <p>{{ product.desc }}</p>
-                <p>Ціна: {{ product.start_price }} грн</p>
-                <a href="/product/{{ product.id }}" class="product-button">Переглянути</a>
-                <div class="auction-time">
-                    Time Left: <span id="product-{{ product.id }}-timer"></span>
-                </div>
+                <img src="https://via.placeholder.com/350x250" alt="product 1">
+                <h3>Ocean Pendant</h3>
+                <a href="/product/4" class="product-button">View Auction</a>
             </div>
-            {% endfor %}
+            <div class="other-product">
+                <img src="https://via.placeholder.com/350x250" alt="product 2">
+                <h3>Coral Reef Painting</h3>
+                <a href="/product/5" class="product-button">View Auction</a>
+            </div>
+            <div class="other-product">
+                <img src="https://via.placeholder.com/350x250" alt="product 3">
+                <h3>Whale Tooth Necklace</h3>
+                <a href="/product/6" class="product-button">View Auction</a>
+            </div>
         </div>
     </div>
 
     <script>
-        // Функція для оновлення таймера
-        function updateTimer(endTime, timerElementId) {
-            const timerElement = document.getElementById(timerElementId);
-            if (timerElement) {
-                const endDate = new Date(endTime).getTime();
-                const now = new Date().getTime();
-                const timeRemaining = endDate - now;
-
-                if (timeRemaining <= 0) {
-                    timerElement.textContent = "Auction Ended";
-                } else {
-                    const hours = Math.floor((timeRemaining / (1000 * 60 * 60)) % 24);
-                    const minutes = Math.floor((timeRemaining / (1000 * 60)) % 60);
-                    const seconds = Math.floor((timeRemaining / 1000) % 60);
-
-                    // Оновлюємо текст таймера
-                    timerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-                }
-            }
-        }
-
-        // Оновлення таймера для головного товару (7 днів)
-        {% if main_product_end_time %}
-        setInterval(function() {
-            updateTimer("{{ main_product_end_time }}", "main-product-timer");
-        }, 1000);
-        {% endif %}
-
-        // Оновлення таймерів для інших товарів (1 день)
-        {% for product in small_products %}
-        setInterval(function() {
-            updateTimer("{{ product.end_time }}", "product-{{ product.id }}-timer");
-        }, 1000);
-        {% endfor %}
+        document.getElementById('start-bid-button').addEventListener('click', function(event) {
+            event.preventDefault(); // Запобігаємо стандартній поведінці переходу за посиланням
+            document.querySelector('#auction-2').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
     </script>
 {% endblock %}

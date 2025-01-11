@@ -12,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.websockets import WebSocket, WebSocketDisconnect
+from sqlalchemy.testing.pickleable import Order
+
 # FastAPI app
 
 app = FastAPI()
@@ -381,10 +383,15 @@ async def read_products(request: Request, access_token: Optional[str] = Cookie(N
         return templates.TemplateResponse("login.html", {"request": request})
 
     try:
+        # Fetching products from the database
         products = db.query(Product).filter(Product.user_id_attached == user.id).all()
 
-        # No need to encode photo to Base64, just pass the binary data directly
-        for product in products:
+        # Separate products into big and small products based on the price
+        big_products = [product for product in products if product.curr_price >= 1000]
+        small_products = [product for product in products if product.curr_price < 1000]
+
+        # Encoding product photo to Base64
+        for product in big_products + small_products:
             if product.photo:
                 try:
                     product.photo = base64.b64encode(product.photo).decode("utf-8")
@@ -392,17 +399,19 @@ async def read_products(request: Request, access_token: Optional[str] = Cookie(N
                     print(f"Error encoding product photo: {e}")
                     product.photo = None  # Handle errors appropriately
 
+        # Returning the products to the template for rendering
         return templates.TemplateResponse("read_products.html", {
             "request": request,
-            "products": products
+            "big_products": big_products,
+            "small_products": small_products
         })
+
     except Exception as e:
         print(e)
         return templates.TemplateResponse("read_products.html", {
             "request": request,
             "error": f"Error: {str(e)}"
         })
-
 
 # get product with it`s id
 
