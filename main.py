@@ -31,7 +31,7 @@ from sqlalchemy.orm import sessionmaker
 
 # Create the engine with a pool size and connection timeout
 engine = create_engine(
-    "mysql+pymysql://root:Ledyshk%40832@localhost/broject_db?charset=utf8mb4&connect_timeout=300&read_timeout=300&write_timeout=300",
+    "mysql+pymysql://root:@localhost/broject_db?charset=utf8mb4&connect_timeout=300&read_timeout=300&write_timeout=300"
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -231,36 +231,70 @@ import base64
 # render main_page
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
-    # Отримуємо користувача на основі токена
     user = get_current_user_from_token(access_token, db)
     if not user:
         return templates.TemplateResponse("login.html", {"request": request})
 
-    # Отримуємо головний продукт
-    main_product = db.query(Product).filter(Product.curr_price >= 1000).order_by(Product.curr_price.desc()).first()
+    # Current time for expired product check
+    current_time = datetime.now()
 
-    # Отримуємо всі інші продукти
-    small_products = db.query(Product).filter(Product.curr_price < 1000).all()
+    # Fetch all unsold products whose end time has passed
+    unsold_expired_products = db.query(Product).filter(
+        Product.end_time <= current_time,
+        Product.is_sailed == False  # Only process unsold products
+    ).all()
 
-    # Розрахунок часу закінчення аукціону для головного продукту (7 днів)
-    if main_product:
-        main_product_end_time = datetime.now() + timedelta(days=7)
-        main_product_end_time = main_product_end_time.strftime("%Y-%m-%d %H:%M:%S")
-    else:
-        main_product_end_time = None
+    for product in unsold_expired_products:
+        # Check if the product has a highest bidder
+        if product.highest_bidder_id:
+            # Mark the product as sold
+            product.is_sailed = True
 
-    # Розрахунок часу закінчення аукціону для малих товарів (1 день)
-    for product in small_products:
-        product_end_time = datetime.now() + timedelta(days=1)
-        product.end_time = product_end_time.strftime("%Y-%m-%d %H:%M:%S")
+            # Add the product to the cart of the highest bidder
+            cart_item = Cart(
+                user_id=product.highest_bidder_id,  # Highest bidder ID
+                product_id=product.id,  # Product ID
+                quantity=1
+            )
+            db.add(cart_item)
 
-    # Передаємо дані до шаблону
+    # Commit changes for all updated products and carts
+    db.commit()
+
+    # Fetch products by category
+    main_product = db.query(Product).filter(Product.category == "big").all()
+    small_products = db.query(Product).filter(Product.category == "small").all()
+
+    for product in main_product + small_products:
+        # Categorize products based on price
+        if product.curr_price and product.curr_price >= 1000:
+            product.category = "big"
+        else:
+            product.category = "small"
+
+        # Encode photo for rendering
+        if product.photo:
+            try:
+                product.photo = base64.b64encode(product.photo).decode("utf-8")
+            except Exception as e:
+                logging.error(f"Error encoding product photo: {e}")
+                product.photo = None
+
+    def get_remaining_time(end_time):
+        if not end_time:
+            return timedelta(seconds=0)
+        remaining_time = end_time - datetime.now()
+        return max(remaining_time, timedelta(seconds=0))
+
+    # Calculate remaining time for each product
+    for product in main_product + small_products:
+        product.remaining_time = get_remaining_time(product.end_time)
+
     return templates.TemplateResponse("main.html", {
         "request": request,
         "user": user,
         "main_product": main_product,
         "small_products": small_products,
-        "main_product_end_time": main_product_end_time
     })
 
 
@@ -287,7 +321,9 @@ class ConnectionManager:
             await connection.send_json(message)
 
 manager = ConnectionManager()
-
+from apscheduler.schedulers.background import BackgroundScheduler
+scheduler = BackgroundScheduler()
+scheduler.start()
 
 @app.websocket("/ws/{product_id}")
 async def websocket_endpoint(websocket: WebSocket, product_id: int, db: Session = Depends(get_db)):
@@ -295,18 +331,12 @@ async def websocket_endpoint(websocket: WebSocket, product_id: int, db: Session 
     try:
         while True:
             data = await websocket.receive_json()
-
-            # Extract details from incoming data
             new_price = data.get("newPrice")
             timestamp = data.get("timestamp")
-
-            # Update the product price in the database
             product = db.query(Product).filter(Product.id == product_id).first()
             if product:
-                product.curr_price = new_price  # Update the current price in the database
+                product.curr_price = new_price
                 db.commit()
-
-                # Record the price change in the history table
                 history_entry = HistoryOfChanges(
                     attached_product_id=product_id,
                     new_price=new_price,
@@ -314,26 +344,15 @@ async def websocket_endpoint(websocket: WebSocket, product_id: int, db: Session 
                 )
                 db.add(history_entry)
                 db.commit()
-
-                # Broadcast the new update to all connected clients
                 await manager.broadcast({
                     "productId": product_id,
                     "newPrice": new_price,
                     "timestamp": timestamp
                 })
             else:
-                # Handle the case where the product is not found
-                await websocket.send_json({
-                    "error": "Product not found"
-                })
+                await websocket.send_json({"error": "Product not found"})
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-
-
-
-
-
-
 
 # Додаткові функції
 # @asynccontextmanager
@@ -383,15 +402,10 @@ async def read_products(request: Request, access_token: Optional[str] = Cookie(N
         return templates.TemplateResponse("login.html", {"request": request})
 
     try:
-        # Fetching products from the database
         products = db.query(Product).filter(Product.user_id_attached == user.id).all()
 
-        # Separate products into big and small products based on the price
-        big_products = [product for product in products if product.curr_price >= 1000]
-        small_products = [product for product in products if product.curr_price < 1000]
-
-        # Encoding product photo to Base64
-        for product in big_products + small_products:
+        # No need to encode photo to Base64, just pass the binary data directly
+        for product in products:
             if product.photo:
                 try:
                     product.photo = base64.b64encode(product.photo).decode("utf-8")
@@ -399,13 +413,10 @@ async def read_products(request: Request, access_token: Optional[str] = Cookie(N
                     print(f"Error encoding product photo: {e}")
                     product.photo = None  # Handle errors appropriately
 
-        # Returning the products to the template for rendering
         return templates.TemplateResponse("read_products.html", {
             "request": request,
-            "big_products": big_products,
-            "small_products": small_products
+            "products": products
         })
-
     except Exception as e:
         print(e)
         return templates.TemplateResponse("read_products.html", {
@@ -495,6 +506,7 @@ async def add_product(request: Request,
         if start_price_float >= 1000:
             start_price_float += 100  # Додати 100 доларів до ціни
 
+        end_time = datetime.now() + timedelta(days=2)
         # Створюємо новий продукт
         new_product = Product(
             name=name,
@@ -503,6 +515,7 @@ async def add_product(request: Request,
             curr_price=start_price_float,  # Початкова ціна = поточна ціна
             photo=compressed_image_data,  # Зберігаємо стиснуті дані зображення
             user_id_attached=user.id,
+            end_time=end_time,
             category="small" if start_price_float < 1000 else "big"
         )
 
