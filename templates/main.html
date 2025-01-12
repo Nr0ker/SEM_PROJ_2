@@ -154,6 +154,7 @@
         </div>
 
         {% for product in main_product %}
+        {% if not product.is_sailed %}
         <h2 class="other-products-title">Amazing Product</h2>
         <div class="product-container oceanic">
             {% if product.photo %}
@@ -166,14 +167,16 @@
                 <p>{{ product.desc }}</p>
                 <p>Price: ${{ product.curr_price }}</p>
                 <a href="/product/{{ product.id }}" class="product-button">Join Auction</a>
-                <div class="auction-time">Time Left: <span id="product-1-timer"></span></div>
+                <div class="auction-time">Valuable to: {{ product.end_time }}<span id="product-1-timer"></span></div>
             </div>
         </div>
+        {% endif %}
         {% endfor %}
 
         <h3 class="other-products-title">Small Products</h3>
         <div class="other-products-container">
             {% for product in small_products %}
+            {% if not product.is_sailed %}
             <div class="other-product">
                 {% if product.photo %}
                     <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
@@ -185,6 +188,7 @@
                 <p>Price: ${{ product.curr_price }}</p>
                 <a href="/product/{{ product.id }}" class="product-button">View Auction</a>
             </div>
+            {% endif %}
             {% endfor %}
         </div>
     </div>

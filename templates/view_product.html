@@ -185,46 +185,48 @@
     <script>
         const socket = new WebSocket(`ws://localhost:8000/ws/{{ product.id }}`);
 
-        let inactivityTimeout = null;
+let inactivityTimeout = null;
 
-        function resetInactivityTimer() {
-            if (inactivityTimeout) clearTimeout(inactivityTimeout);
-            inactivityTimeout = setTimeout(() => {
-                window.location.href = `/add_to_cart/{{ user.id }}/{{ product.id }}`;
-                alert("This product has been added to your cart due to inactivity.");
-            }, 300000); // 5 minutes
-        }
+function resetInactivityTimer() {
+    if (inactivityTimeout) clearTimeout(inactivityTimeout);
+    inactivityTimeout = setTimeout(() => {
+        window.location.href = `/add_to_cart/{{ user.id }}/{{ product.id }}`;
+        alert("This product has been added to your cart due to inactivity.");
+    }, 300000); // 5 minutes
+}
 
-        resetInactivityTimer();
+resetInactivityTimer();
 
-        socket.onmessage = function(event) {
-            resetInactivityTimer();
-            const data = JSON.parse(event.data);
-            if (data.productId === {{ product.id }}) {
-                document.getElementById("current-price").innerText = `$${data.newPrice.toFixed(2)}`;
+socket.onmessage = function(event) {
+    resetInactivityTimer();
+    const data = JSON.parse(event.data);
+    if (data.productId === {{ product.id }}) {
+        document.getElementById("current-price").innerText = `$${data.newPrice.toFixed(2)}`;
 
-                const history = document.getElementById("price-history");
-                const newItem = document.createElement("li");
-                newItem.innerHTML = `<strong>${new Date(data.timestamp).toLocaleString('en-US')}:</strong> $${data.newPrice.toFixed(2)}`;
-                history.appendChild(newItem);
-            }
-        };
+        const history = document.getElementById("price-history");
+        const newItem = document.createElement("li");
+        newItem.innerHTML = `<strong>${new Date(data.timestamp).toLocaleString('en-US')}:</strong> $${data.newPrice.toFixed(2)}`;
+        history.appendChild(newItem);
+    }
+};
 
-        document.getElementById("send-update").addEventListener("click", function() {
-            const newPrice = parseFloat(document.getElementById("price-input").value);
-            const userId = {{ user.id }};
-            const currPrice = parseFloat(document.getElementById("current-price").innerText.replace('$', ''));
+document.getElementById("send-update").addEventListener("click", function() {
+    const newPrice = parseFloat(document.getElementById("price-input").value);
+    const userId = {{ user.id }};  // Get the current user's ID
+    const currPrice = parseFloat(document.getElementById("current-price").innerText.replace('$', ''));
 
-            if (!isNaN(newPrice) && newPrice > currPrice) {
-                socket.send(JSON.stringify({
-                    productId: {{ product.id }},
-                    userId: userId,
-                    newPrice: newPrice,
-                    timestamp: new Date().toISOString()
-                }));
-            } else {
-                alert("The new price must be higher than the current price.");
-            }
-        });
+    if (!isNaN(newPrice) && newPrice > currPrice) {
+        socket.send(JSON.stringify({
+            productId: {{ product.id }},
+            userId: userId,  // Include user ID in the message
+            newPrice: newPrice,
+            timestamp: new Date().toISOString()
+        }));
+    } else {
+        alert("The new price must be higher than the current price.");
+    }
+});
+
+
     </script>
 {% endblock %}

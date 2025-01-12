@@ -226,9 +226,53 @@ async def get_product_image(product_id: int, db: Session = Depends(get_db)):
 
     # Assuming the image is in JPEG format; adjust the content type if needed
     return StreamingResponse(image_stream, media_type="image/jpeg")
-
 import base64
-# render main_page
+
+# This function should now only process expired and unsold products
+def process_unsold_expired_products(db: Session):
+    # Get the current time
+    current_time = datetime.now()
+
+    # Fetch unsold expired products
+    unsold_expired_products = db.query(Product).filter(
+        Product.end_time <= current_time,  # Product has expired
+        Product.is_sailed == False  # Only process unsold products
+    ).all()
+
+    for product in unsold_expired_products:
+        # We now determine the highest bidder for this product
+        highest_bidder = None
+        highest_bid = 0  # Starting with 0 since product might not have any bid initially
+
+        # Loop through all users to find the one with the highest bid
+        for user in db.query(User).filter(User.id == product.user_id_attached).all():  # Assumed to be the users who placed bets
+            if user.current_bet and user.current_bet > highest_bid:
+                highest_bid = user.current_bet
+                highest_bidder = user
+
+        # If there's a highest bidder, we process the update
+        if highest_bidder:
+            # Set the highest bidder's ID
+            product.highest_bidder_id = highest_bidder.id
+
+            # Mark the product as sold
+            product.is_sailed = True
+
+            # Add the product to the cart of the highest bidder
+            cart_item = Cart(
+                user_id=highest_bidder.id,  # Highest bidder's user ID
+                product_id=product.id,  # Product ID
+                quantity=1
+            )
+            db.add(cart_item)
+            db.commit()
+
+            # Optionally log that the product was sold and added to the cart
+            logging.info(f"Product {product.id} sold to User {highest_bidder.id}, added to cart.")
+
+    # Commit changes for all updated products and carts
+    db.commit()
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
     user = get_current_user_from_token(access_token, db)
@@ -244,29 +288,18 @@ async def read_root(request: Request, access_token: Optional[str] = Cookie(None)
         Product.is_sailed == False  # Only process unsold products
     ).all()
 
-    for product in unsold_expired_products:
-        # Check if the product has a highest bidder
-        if product.highest_bidder_id:
-            # Mark the product as sold
-            product.is_sailed = True
-
-            # Add the product to the cart of the highest bidder
-            cart_item = Cart(
-                user_id=product.highest_bidder_id,  # Highest bidder ID
-                product_id=product.id,  # Product ID
-                quantity=1
-            )
-            db.add(cart_item)
+    # Process the unsold expired products
+    process_unsold_expired_products(db)
 
     # Commit changes for all updated products and carts
     db.commit()
 
-    # Fetch products by category
-    main_product = db.query(Product).filter(Product.category == "big").all()
-    small_products = db.query(Product).filter(Product.category == "small").all()
+    # Fetch only unsold products
+    main_product = db.query(Product).filter(Product.category == "big", Product.is_sailed == False).all()
+    small_products = db.query(Product).filter(Product.category == "small", Product.is_sailed == False).all()
 
+    # Categorize and encode photos for rendering
     for product in main_product + small_products:
-        # Categorize products based on price
         if product.curr_price and product.curr_price >= 1000:
             product.category = "big"
         else:
@@ -280,13 +313,13 @@ async def read_root(request: Request, access_token: Optional[str] = Cookie(None)
                 logging.error(f"Error encoding product photo: {e}")
                 product.photo = None
 
+    # Calculate remaining time for each product
     def get_remaining_time(end_time):
         if not end_time:
             return timedelta(seconds=0)
         remaining_time = end_time - datetime.now()
         return max(remaining_time, timedelta(seconds=0))
 
-    # Calculate remaining time for each product
     for product in main_product + small_products:
         product.remaining_time = get_remaining_time(product.end_time)
 
@@ -296,6 +329,7 @@ async def read_root(request: Request, access_token: Optional[str] = Cookie(None)
         "main_product": main_product,
         "small_products": small_products,
     })
+
 
 
 
@@ -325,6 +359,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 scheduler = BackgroundScheduler()
 scheduler.start()
 
+
 @app.websocket("/ws/{product_id}")
 async def websocket_endpoint(websocket: WebSocket, product_id: int, db: Session = Depends(get_db)):
     await manager.connect(websocket)
@@ -333,26 +368,53 @@ async def websocket_endpoint(websocket: WebSocket, product_id: int, db: Session 
             data = await websocket.receive_json()
             new_price = data.get("newPrice")
             timestamp = data.get("timestamp")
+            user_id = data.get("userId")  # Get the user who placed the bet
+
             product = db.query(Product).filter(Product.id == product_id).first()
+
             if product:
-                product.curr_price = new_price
-                db.commit()
-                history_entry = HistoryOfChanges(
-                    attached_product_id=product_id,
-                    new_price=new_price,
-                    timestamp=timestamp
-                )
-                db.add(history_entry)
-                db.commit()
-                await manager.broadcast({
-                    "productId": product_id,
-                    "newPrice": new_price,
-                    "timestamp": timestamp
-                })
+                # Check if the new price is higher than the current price
+                if new_price > product.curr_price:
+                    # Update product price
+                    product.curr_price = new_price
+                    db.commit()
+
+                    # Create and commit the history of price update
+                    history_entry = HistoryOfChanges(
+                        attached_product_id=product_id,
+                        new_price=new_price,
+                        timestamp=timestamp
+                    )
+                    db.add(history_entry)
+                    db.commit()
+
+                    # Find the user who placed the highest bet
+                    highest_bidder = db.query(User).filter(User.id == user_id).first()
+                    if highest_bidder:
+                        # Update the highest bidder's details
+                        highest_bidder.current_bet = new_price  # Store the bet amount
+                        highest_bidder.id_product_bet = product_id  # Attach the bet to the specific product
+                        db.commit()
+
+                        # Remove any existing highest bidder for this product
+                        product.highest_bidder_id = highest_bidder.id
+                        db.commit()
+
+                    # Broadcast the new price and update to all connected clients
+                    await manager.broadcast({
+                        "productId": product_id,
+                        "newPrice": new_price,
+                        "timestamp": timestamp
+                    })
+                else:
+                    # Inform the user that their bet is lower than the current bet
+                    await websocket.send_json({"error": "The new price must be higher than the current price."})
             else:
+                # If the product was not found
                 await websocket.send_json({"error": "Product not found"})
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
 
 # Додаткові функції
 # @asynccontextmanager
