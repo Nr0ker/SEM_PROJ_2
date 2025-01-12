@@ -13,27 +13,12 @@ Base = declarative_base()
 
 
 # Підключення до MySQL без бази даних
-connection = pymysql.connect(
-    host='localhost',
-    user='root',
-    password='Ledyshk@832'
-)
 
-try:
-    with connection.cursor() as cursor:
-        # Створення бази даних, якщо вона ще не існує
-        cursor.execute("CREATE DATABASE IF NOT EXISTS broject_db")
-        print("Database created or already exists.")
-finally:
-    connection.close()
+
 
 # Тепер підключення до бази даних broject_db
-engine = create_engine(
-    "mysql+pymysql://root:Ledyshk%40832@localhost/broject_db"
-)
 
 # Створення всіх таблиць
-Base.metadata.create_all(bind=engine)
 
 # User table model
 class User(Base):
@@ -47,6 +32,9 @@ class User(Base):
     profile_photo = Column(LONGBLOB)
     role = Column(String(50), nullable=False, default="user")
     disabled = Column(Boolean, default=False)
+
+    id_product_bet = Column(Integer, ForeignKey("products.id"), nullable=True)
+    current_bet = Column(Float, nullable=True)
 
     # Relationships
     products = relationship(
@@ -78,7 +66,7 @@ class HistoryOfChanges(Base):
     id = Column(Integer, primary_key=True, index=True)
     attached_product_id = Column(Integer, ForeignKey("products.id"))
     new_price = Column(Float, nullable=False)
-    timestamp = Column(DateTime, server_default=func.now(), nullable=False)  # UTC time without microseconds
+    timestamp = datetime.now(pytz.utc).replace(microsecond=0)
 
     product = relationship("Product", back_populates="history")
 
@@ -98,6 +86,7 @@ class Product(Base):
     photo = Column(LONGBLOB)
     user_id_attached = Column(Integer, ForeignKey('users.id'))
     category = Column(String(50), nullable=True)
+    end_time = Column(DateTime, nullable=True)
 
     # Relationships
     owner = relationship(
@@ -130,7 +119,7 @@ class Bid(Base):
 
 def init_db():
     engine = create_engine(
-        "mysql+pymysql://root:Ledyshk%40832@localhost/broject_db?charset=utf8mb4&connect_timeout=300&read_timeout=300&write_timeout=300"
+        "mysql+pymysql://root:@localhost/broject_db?charset=utf8mb4&connect_timeout=300&read_timeout=300&write_timeout=300"
     )
     Base.metadata.create_all(bind=engine)
     print("Database and tables created successfully!")

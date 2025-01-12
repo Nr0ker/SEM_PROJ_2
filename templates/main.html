@@ -102,9 +102,10 @@
             margin: 60px 0 20px 0;
         }
 
+        /* Change: Make the container for small products a grid */
         .other-products-container {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, 1fr); /* Ensure there are 3 products per row */
             gap: 30px;
             margin-bottom: 50px;
         }
@@ -150,68 +151,47 @@
         <div class="hero">
             <h1>Welcome to the Oceanic Auction</h1>
             <h2>Explore rare treasures from the ocean depths</h2>
-            <a href="#auction-2" class="cta-button" id="start-bid-button">Start Bidding Now</a>
         </div>
 
-        <!-- Перший аукціон -->
-        <h2 class="other-products-title">Auction 1 - Oceanic Gems</h2>
+        {% for product in main_product %}
+        <h2 class="other-products-title">Amazing Product</h2>
         <div class="product-container oceanic">
-            <img src="https://via.placeholder.com/500x300" alt="Ocean Gem" class="product-image">
+            {% if product.photo %}
+                <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
+            {% else %}
+                <p>No image available</p>
+            {% endif %}
             <div class="product-details">
-                <h3>Exclusive Ocean Gem</h3>
-                <p>Bid on this rare ocean gem, a true treasure from the deep.</p>
-                <a href="/product/1" class="product-button">Join Auction</a>
+                <h3>{{ product.name }}</h3>
+                <p>{{ product.desc }}</p>
+                <p>Price: ${{ product.curr_price }}</p>
+                <a href="/product/{{ product.id }}" class="product-button">Join Auction</a>
                 <div class="auction-time">Time Left: <span id="product-1-timer"></span></div>
             </div>
         </div>
+        {% endfor %}
 
-        <!-- Другий аукціон -->
-        <h2 id="auction-2" class="other-products-title">Auction 2 - Underwater Relics</h2>
-        <div class="product-container oceanic">
-            <img src="https://via.placeholder.com/500x300" alt="Ancient Relic" class="product-image">
-            <div class="product-details">
-                <h3>Ancient Relic of the Sea</h3>
-                <p>Discover this ancient artifact and more hidden in the depths.</p>
-                <a href="/product/2" class="product-button">Join Auction</a>
-                <div class="auction-time">Time Left: <span id="product-2-timer"></span></div>
-            </div>
-        </div>
-
-        <!-- Третій аукціон -->
-        <h2 class="other-products-title">Auction 3 - Lost Treasures</h2>
-        <div class="product-container oceanic">
-            <img src="https://via.placeholder.com/500x300" alt="Treasure Chest" class="product-image">
-            <div class="product-details">
-                <h3>Sunken Treasure Chest</h3>
-                <p>A treasure chest filled with gold coins and gems awaits!</p>
-                <a href="/product/3" class="product-button">Join Auction</a>
-                <div class="auction-time">Time Left: <span id="product-3-timer"></span></div>
-            </div>
-        </div>
-
-        <h3 class="other-products-title">Other Auctions</h3>
+        <h3 class="other-products-title">Small Products</h3>
         <div class="other-products-container">
+            {% for product in small_products %}
             <div class="other-product">
-                <img src="https://via.placeholder.com/350x250" alt="product 1">
-                <h3>Ocean Pendant</h3>
-                <a href="/product/4" class="product-button">View Auction</a>
+                {% if product.photo %}
+                    <img src="data:image/jpeg;base64,{{ product.photo }}" alt="{{ product.name }}" class="product-image">
+                {% else %}
+                    <p>No image available</p>
+                {% endif %}
+                <h4>{{ product.name }}</h4>
+                <p>{{ product.desc }}</p>
+                <p>Price: ${{ product.curr_price }}</p>
+                <a href="/product/{{ product.id }}" class="product-button">View Auction</a>
             </div>
-            <div class="other-product">
-                <img src="https://via.placeholder.com/350x250" alt="product 2">
-                <h3>Coral Reef Painting</h3>
-                <a href="/product/5" class="product-button">View Auction</a>
-            </div>
-            <div class="other-product">
-                <img src="https://via.placeholder.com/350x250" alt="product 3">
-                <h3>Whale Tooth Necklace</h3>
-                <a href="/product/6" class="product-button">View Auction</a>
-            </div>
+            {% endfor %}
         </div>
     </div>
 
     <script>
         document.getElementById('start-bid-button').addEventListener('click', function(event) {
-            event.preventDefault(); // Запобігаємо стандартній поведінці переходу за посиланням
+            event.preventDefault(); // Prevent the default behavior of the link
             document.querySelector('#auction-2').scrollIntoView({
                 behavior: 'smooth',
                 block: 'start'
